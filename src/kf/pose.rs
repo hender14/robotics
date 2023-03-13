@@ -1,63 +1,67 @@
 use nalgebra as na;
-// use nalgebra::DMatrix;
 // use std::f64::consts::PI as π;
 
 // use ndarray::prelude::*;
 // use ndarray_linalg::solve::Inverse;
 
+pub struct Stds {
+    pub nn: f32,
+    pub no: f32,
+    pub on: f32,
+    pub oo: f32,
+}
+struct Pose {
+    x: f32,
+    y: f32,
+    theta: f32,
+}
 
-pub fn mat_m(nu: f32, omega: f32, time: f32, stds: &Vec<f32>) -> na::SMatrix<f32, 2, 2> {
-    let mut mat = na::SMatrix::zeros();
-    mat[(0, 0)] = stds[0].powf(2.) * nu.abs() / time + stds[1].powf(2.) * omega.abs() / time;
-    mat[(1, 1)] = stds[2].powf(2.) * nu.abs() / time + stds[3].powf(2.) * omega.abs() / time;
+pub fn mat_m(nu: f32, omega: f32, time: f32, stds: &Stds) -> na::Matrix2<f32> {
+    let mat = na::Matrix2::new(
+        stds.nn.powf(2.)*nu.abs()/time + stds.no.powf(2.)*omega.abs()/time,   0.,
+        0.  , stds.on.powf(2.)*nu.abs()/time + stds.oo.powf(2.)*omega.abs()/time);
     mat
 }
 
-// fn matA(nu: f32, omega: f32, time: f32, theta: f32) -> DMatrix<f32> {
-//     let mut mat = DMatrix::zeros(3, 3);
-//     let st = theta.sin();
-//     let ct = theta.cos();
-//     let stw = (theta + omega * time).sin();
-//     let ctw = (theta + omega * time).cos();
-//     mat[[0, 0]] = (stw - st) / omega;
-//     mat[[0, 1]] = (-nu / (omega.powf(2.0)) * (stw - st)) + (nu / omega * time * ctw);
-//     mat[[1, 0]] = (-ctw + ct) / omega;
-//     mat[[1, 1]] = (-nu / (omega.powf(2.0)) * (-ctw + ct)) + (nu / omega * time * stw);
-//     mat[[2, 2]] = time;
-//     mat
-// }
+fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
+    let st = theta.sin();
+    let ct = theta.cos();
+    let stw = (theta + omega * time).sin();
+    let ctw = (theta + omega * time).cos();
+    let mat = na::Matrix3x2::new(
+        (-stw + st)/omega, (-nu/(omega.powf(2.0))*(stw - st))+(nu/omega*time*ctw), 
+        (-ctw + ct)/omega, (-nu/(omega.powf(2.0))*(-ctw + ct))+(nu/omega*time*stw),
+        0.               , time);
+    mat
+}
 
-// fn matF(nu: f32, omega: f32, time: f32, theta: f32) -> DMatrix<f32> {
-//     let mut mat = DMatrix::zeros(3, 3);
-//     mat[[0, 0]] = 1.0;
-//     mat[[1, 1]] = 1.0;
-//     mat[[2, 2]] = 1.0;
-//     mat[[0, 2]] = (nu / omega) * (theta + omega * time).cos() - (nu / omega) * theta.cos();
-//     mat[[1, 2]] = (nu / omega) * (theta + omega * time).sin() - (nu / omega) * theta.sin();
-//     mat
-// }
+fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
+    let mut mat = na::Matrix3::new(1., 0., 0.,
+                                                                       0., 1., 0.,
+                                                                       0., 0., 1.);
+    mat[(0, 2)] = (nu/omega)*(theta + omega*time).cos() - (nu/omega)*theta.cos();
+    mat[(1, 2)] = (nu/omega)*(theta + omega*time).sin() - (nu/omega)*theta.sin();
+    mat
+}
 
-// fn matH(pose: &pose, poseo: &pose) -> DMatrix<f32> {
-//     let mut mat = DMatrix::zeros(2, 3);
-//     let mx = poseo.x;
-//     let my = poseo.y;
-//     let mux = pose.x;
-//     let muy = pose.y;
-//     let q = (mux - mx).powf(2.0) + (muy - my).powf(2.0);
-//     mat[[0, 0]] = (mux - mx) / q.sqrt();
-//     mat[[0, 1]] = (muy - my) / q.sqrt();
-//     mat[[1, 0]] = (my - muy) / q;
-//     mat[[1, 1]] = (mux - mx) / q;
-//     mat[[1, 2]] = -1.0;
-//     mat
-// }
+fn mat_h(pose: &Pose, poseo: &Pose) -> na::Matrix2x3<f32> {
+    let mx = poseo.x;
+    let my = poseo.y;
+    let mux = pose.x;
+    let muy = pose.y;
+    let q = (mux - mx).powf(2.0) + (muy - my).powf(2.0);
+    let mat = na::Matrix2x3::new(
+        (mux - mx)/q.sqrt(), (muy - my)/q.sqrt(), 0.,
+        (my - muy)/q       , (mux - mx)/q       , -1.0);
+    mat
+}
 
-// fn matQ(distance_dev: f32, direction_dev: f32) -> DMatrix<f32> {
-//     let mut mat = DMatrix::zeros(2, 2);
-//     mat[[0, 0]] = distance_dev.powf(2.0);
-//     mat[[1, 1]] = direction_dev.powf(2.0);
-//     mat
-// }
+fn mat_q(distance_dev: f32, direction_dev: f32) -> na::Matrix2<f32> {
+    let mat = na::Matrix2::new(
+        distance_dev.powf(2.0), 0.,
+        0., direction_dev.powf(2.0));
+    mat
+}
 
 // pub struct KalmanFilter_Pose{
 //     belief: MultivariateNormal,
