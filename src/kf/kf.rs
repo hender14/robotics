@@ -34,9 +34,9 @@ fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
     mat
 }
 
-fn mat_h(pose: &na::Vector3<f32>, poseo: &na::Vector3<f32>) -> na::Matrix2x3<f32> {
-    let mx = poseo[0];
-    let my = poseo[1];
+fn mat_h(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x3<f32> {
+    let mx = landmark[0];
+    let my = landmark[1];
     let mux = pose[0];
     let muy = pose[1];
     let q = (mux - mx).powf(2.0) + (muy - my).powf(2.0);
@@ -53,12 +53,12 @@ fn mat_q(distance_dev: f32, direction_dev: f32) -> na::Matrix2<f32> {
     mat
 }
 
-pub struct KalmanFilterPose <'a> {
+pub struct KFilterPose <'a> {
     belief: Belief,
     system_cov: & 'a Stds,
     distance_dev_rate: f32,
     direction_dev: f32,
-    pose_change: na::Vector3<f32>,
+    // pose_change: na::Vector3<f32>,
 }
 
 struct Belief {
@@ -66,55 +66,60 @@ struct Belief {
     cov: na::Matrix3<f32>,
 }
 
-impl <'a> KalmanFilterPose <'a> {
+impl <'a> KFilterPose <'a> {
     pub fn new( initial_state_mean: &na::Vector3<f32>, initial_cov: f32) -> Self {
         let system_cov = &Stds {nn:0.19, no:0.001, oo:0.13, on:0.2,};
         let belief = Belief { mean: *initial_state_mean, cov: initial_cov * na::Matrix3::identity()};
-        Self{ belief, system_cov, distance_dev_rate: 0.14, direction_dev: 0.05, pose_change: na::Vector3::zeros() }
+        Self{ belief, system_cov, distance_dev_rate: 0.14, direction_dev: 0.05 }
     }
 
-    pub fn filter_predict(&self, nu: f32, omega: f32, time: f32) -> (na::Vector3<f32>, na::Matrix3<f32>){
+    pub fn kf_predict(& mut self, nu: f32, omega: f32, time: f32) {
+    // pub fn kf_predict(&self, nu: f32, omega: f32, time: f32) -> (na::Vector3<f32>, na::Matrix3<f32>){
         let m = mat_m(nu, omega, time, self.system_cov);
         let a = mat_a(nu, omega, time, self.belief.mean[2]);
         let f = mat_f(nu, omega, time, self.belief.mean[2]);
-        let predicted_state_mean = f * (&self.belief.mean);
-        let predicted_state_cov = f * (&self.belief.cov) * (&f.transpose()) + a * (&m) * (&a.transpose());
-        (predicted_state_mean, predicted_state_cov)
+        self.belief.cov = f * (self.belief.cov) * (f.transpose()) + a * (m) * (a.transpose());
+        self.belief.mean = KFilterPose::state_transition(nu, omega, time, &self.belief.mean);
+        // (predicted_state_mean, predicted_state_cov)
     }
 
-    pub fn filter_update(& mut self, predicted_state_mean: &na::Vector3<f32>, predicted_state_cov: &na::Matrix3<f32>, pose: &na::Vector3<f32>)-> (na::Vector3<f32>, na::Matrix3<f32>){
-        let h = mat_h(&pose, &self.belief.mean);
-        let estimated_z = self.observation_function(&self.belief.mean, &predicted_state_mean);
+    pub fn kf_update(& mut self, obj_dis: &na::Vector2<f32>, landmark: &na::Vector3<f32>)-> na::Vector3<f32> {
+    // pub fn kfilter_update(& mut self, predicted_state_mean: &na::Vector3<f32>, predicted_state_cov: &na::Matrix3<f32>, pose: &na::Vector3<f32>)-> (na::Vector3<f32>, na::Matrix3<f32>){
+        let h = mat_h(&self.belief.mean, &landmark);
+        let estimated_z = self.observation_function(&self.belief.mean, &landmark);
         // let z = na::Vector2::new(pose - self.belief.mean);
-        let z = self.observation_function(&pose, &self.belief.mean);
+        let z = obj_dis;
+        // let z = self.observation_function(&pose, &self.belief.mean);
         let q = mat_q(estimated_z[0]*self.distance_dev_rate, self.direction_dev);
-        let kalman_gain = predicted_state_cov * (h.transpose()) * (h * predicted_state_cov * h.transpose() + q).try_inverse().unwrap();
+        let kalman_gain = self.belief.cov * (h.transpose()) * (h * self.belief.cov * h.transpose() + q).try_inverse().unwrap();
         // let kalman_gain = predicted_state_cov * (&h.transpose()) * (&h * (&predicted_state_cov) * (&h.transpose()) + q).try_inverse().unwrap();
-        let filtered_state_mean = predicted_state_mean + kalman_gain * (z - estimated_z);
-        let filtered_state_cov = predicted_state_cov - ( kalman_gain * h * predicted_state_cov);
-        self.pose_change = filtered_state_mean - self.belief.mean;
-        self.belief.mean = filtered_state_mean;
-        self.belief.cov = filtered_state_cov;
-        (filtered_state_mean, filtered_state_cov)
+        self.belief.mean += kalman_gain * (z - estimated_z);
+        self.belief.cov = ( na::Matrix3::identity() - kalman_gain * h ) * self.belief.cov;
+        // self.pose_change = filtered_state_mean - self.belief.mean;
+        // self.belief.mean = filtered_state_mean;
+        // self.belief.cov = filtered_state_cov;
+        self.belief.mean
+        // (filtered_state_mean, filtered_state_cov)
     }
 
-    pub fn observation_function(&self, poseo: &na::Vector3<f32>, pose_estimate: &na::Vector3<f32>) -> na::Matrix2x1<f32> {
-        let diff = pose_estimate - poseo;
-        let mut phi = diff[1].atan2(diff[0]) - poseo[2];
+    pub fn state_transition(nu: f32, omega: f32, time: f32, pose: &na::Vector3<f32>) -> na::Vector3<f32> {
+        let t0 = pose[2];
+        // let mut mat = na::Vector3::zeros();
+        if omega.abs() < 1e-10 {
+            return pose + na::Vector3::new( nu*t0.cos(), nu*t0.sin(), omega )*time;
+        } else {
+            return pose + na::Vector3::new( nu/omega*((t0+omega*time).sin()-t0.sin()), 
+                                            nu/omega*(-(t0+omega*time).cos()-t0.cos()),
+                                            omega*time );
+        }
+    }
+
+    pub fn observation_function(&self, pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x1<f32> {
+        let diff = landmark - pose;
+        let mut phi = diff[1].atan2(diff[0]) - pose[2];
         while phi >= PI { phi -= 2. * PI; }
         while phi < -PI { phi += 2. * PI; }
         let mat = na::Matrix2x1::new(diff[0].hypot(diff[1]), phi);
         mat
     }
-
-    // pub fn pose_estimate(& mut self, x: f32, y: f32, theta: f32, time: f32) -> na::Vector3<f32> {
-    //     let pose = na::Vector3::new(x, y, theta);
-    //     let nu = (pose[1] - self.belief.mean[1]).hypot(pose[0] - self.belief.mean[0])/time;
-    //     let omega = theta / time;
-    //     // フィルタリング分布取得
-    //     let predicted_state = self.filter_predict(nu, omega, time);
-    //     let filtered_state = self.filter_update(&predicted_state.0, &predicted_state.1, &pose);
-
-    //     return filtered_state.0
-    // }
 }
