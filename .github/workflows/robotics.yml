@@ -1,0 +1,28 @@
+name: CI on robotics
+
+on:
+  push:
+    paths:
+      - 'src/**'
+    # branches: [ '*' ]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Out Repo
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/toolchain@v1
+        with:
+          command: test
