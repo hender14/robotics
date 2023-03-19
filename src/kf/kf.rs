@@ -1,5 +1,5 @@
-use nalgebra as na;
 use super::sensor;
+use nalgebra as na;
 
 pub struct Stds {
     pub nn: f32,
