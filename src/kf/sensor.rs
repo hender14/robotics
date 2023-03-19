@@ -6,6 +6,22 @@ pub struct Sensor {
     direction_bias: f32,
 }
 
+pub fn observation_function(
+    pose: &na::Vector3<f32>,
+    landmark: &na::Vector3<f32>,
+) -> na::Matrix2x1<f32> {
+    let diff = landmark - pose;
+    let mut phi = diff[1].atan2(diff[0]) - pose[2];
+    while phi >= PI {
+        phi -= 2. * PI;
+    }
+    while phi < -PI {
+        phi += 2. * PI;
+    }
+    let mat = na::Matrix2x1::new(diff[0].hypot(diff[1]), phi);
+    mat
+}
+
 impl Sensor {
     pub fn new() -> Self {
         Self {
@@ -31,7 +47,7 @@ impl Sensor {
         mat
     }
 
-    pub fn noize(&self, obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
+    pub fn noise(&self, obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         let mat = Sensor::bias(&self, &obj_dis);
         mat
     }

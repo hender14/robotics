@@ -53,7 +53,7 @@ impl<'a> Agent<'a> {
             /* calculate landmark distance/direct */
             let mut obj_dis = self.sensor.observation_predict(pose, &lpose_row);
             /* refrect noize etc */
-            obj_dis = self.sensor.noize(&obj_dis);
+            obj_dis = self.sensor.noise(&obj_dis);
 
             /* calculate kfiltered pose*/
             kf_state = self.kf.kf_update(&obj_dis, &lpose_row);

@@ -1,5 +1,5 @@
 use nalgebra as na;
-use std::f32::consts::PI;
+use super::sensor;
 
 pub struct Stds {
     pub nn: f32,
@@ -109,7 +109,7 @@ impl<'a> KFilterPose<'a> {
         landmark: &na::Vector3<f32>,
     ) -> na::Vector3<f32> {
         let h = mat_h(&self.belief.mean, &landmark);
-        let estimated_z = self.observation_function(&self.belief.mean, &landmark);
+        let estimated_z = sensor::observation_function(&self.belief.mean, &landmark);
         let z = obj_dis;
         let q = mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
         let kalman_gain = self.belief.cov
@@ -140,22 +140,5 @@ impl<'a> KFilterPose<'a> {
                     omega * time,
                 );
         }
-    }
-
-    pub fn observation_function(
-        &self,
-        pose: &na::Vector3<f32>,
-        landmark: &na::Vector3<f32>,
-    ) -> na::Matrix2x1<f32> {
-        let diff = landmark - pose;
-        let mut phi = diff[1].atan2(diff[0]) - pose[2];
-        while phi >= PI {
-            phi -= 2. * PI;
-        }
-        while phi < -PI {
-            phi += 2. * PI;
-        }
-        let mat = na::Matrix2x1::new(diff[0].hypot(diff[1]), phi);
-        mat
     }
 }
