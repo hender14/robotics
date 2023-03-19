@@ -28,7 +28,6 @@ fn main() {
     }
 }
 
-
 /* config landmark */
 fn dec_landmark() -> (na::Matrix3<f32>, usize) {
     let lpose1: na::RowVector3<f32> = na::RowVector3::new(-4., 2., 0.);
