@@ -21,7 +21,7 @@ fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
     let stw = (theta + omega * time).sin();
     let ctw = (theta + omega * time).cos();
     let mat = na::Matrix3x2::new(
-        (-stw + st)/omega, (-nu/(omega.powf(2.0))*(stw - st))+(nu/omega*time*ctw), 
+        (stw - st)/omega, (-nu/(omega.powf(2.0))*(stw - st))+(nu/omega*time*ctw), 
         (-ctw + ct)/omega, (-nu/(omega.powf(2.0))*(-ctw + ct))+(nu/omega*time*stw),
         0.               , time);
     mat
@@ -29,8 +29,8 @@ fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
 
 fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
     let mut mat = na::Matrix3::identity();
-    mat[(0, 2)] = (nu/omega)*(theta + omega*time).cos() - (nu/omega)*theta.cos();
-    mat[(1, 2)] = (nu/omega)*(theta + omega*time).sin() - (nu/omega)*theta.sin();
+    mat[(0, 2)] = (nu/omega)*((theta + omega*time).cos() - theta.cos());
+    mat[(1, 2)] = (nu/omega)*((theta + omega*time).sin() - theta.sin());
     mat
 }
 
@@ -58,7 +58,6 @@ pub struct KFilterPose <'a> {
     system_cov: & 'a Stds,
     distance_dev_rate: f32,
     direction_dev: f32,
-    // pose_change: na::Vector3<f32>,
 }
 
 struct Belief {
@@ -74,42 +73,32 @@ impl <'a> KFilterPose <'a> {
     }
 
     pub fn kf_predict(& mut self, nu: f32, omega: f32, time: f32) {
-    // pub fn kf_predict(&self, nu: f32, omega: f32, time: f32) -> (na::Vector3<f32>, na::Matrix3<f32>){
         let m = mat_m(nu, omega, time, self.system_cov);
         let a = mat_a(nu, omega, time, self.belief.mean[2]);
         let f = mat_f(nu, omega, time, self.belief.mean[2]);
         self.belief.cov = f * (self.belief.cov) * (f.transpose()) + a * (m) * (a.transpose());
         self.belief.mean = KFilterPose::state_transition(nu, omega, time, &self.belief.mean);
-        // (predicted_state_mean, predicted_state_cov)
     }
 
     pub fn kf_update(& mut self, obj_dis: &na::Vector2<f32>, landmark: &na::Vector3<f32>)-> na::Vector3<f32> {
-    // pub fn kfilter_update(& mut self, predicted_state_mean: &na::Vector3<f32>, predicted_state_cov: &na::Matrix3<f32>, pose: &na::Vector3<f32>)-> (na::Vector3<f32>, na::Matrix3<f32>){
         let h = mat_h(&self.belief.mean, &landmark);
         let estimated_z = self.observation_function(&self.belief.mean, &landmark);
-        // let z = na::Vector2::new(pose - self.belief.mean);
         let z = obj_dis;
-        // let z = self.observation_function(&pose, &self.belief.mean);
         let q = mat_q(estimated_z[0]*self.distance_dev_rate, self.direction_dev);
         let kalman_gain = self.belief.cov * (h.transpose()) * (h * self.belief.cov * h.transpose() + q).try_inverse().unwrap();
-        // let kalman_gain = predicted_state_cov * (&h.transpose()) * (&h * (&predicted_state_cov) * (&h.transpose()) + q).try_inverse().unwrap();
         self.belief.mean += kalman_gain * (z - estimated_z);
         self.belief.cov = ( na::Matrix3::identity() - kalman_gain * h ) * self.belief.cov;
-        // self.pose_change = filtered_state_mean - self.belief.mean;
-        // self.belief.mean = filtered_state_mean;
-        // self.belief.cov = filtered_state_cov;
+
         self.belief.mean
-        // (filtered_state_mean, filtered_state_cov)
     }
 
     pub fn state_transition(nu: f32, omega: f32, time: f32, pose: &na::Vector3<f32>) -> na::Vector3<f32> {
         let t0 = pose[2];
-        // let mut mat = na::Vector3::zeros();
         if omega.abs() < 1e-10 {
             return pose + na::Vector3::new( nu*t0.cos(), nu*t0.sin(), omega )*time;
         } else {
             return pose + na::Vector3::new( nu/omega*((t0+omega*time).sin()-t0.sin()), 
-                                            nu/omega*(-(t0+omega*time).cos()-t0.cos()),
+                                            nu/omega*(-(t0+omega*time).cos()+t0.cos()),
                                             omega*time );
         }
     }

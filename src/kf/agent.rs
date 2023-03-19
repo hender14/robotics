@@ -1,45 +1,56 @@
 use nalgebra as na;
-// use crate::kf::sensor::Sensor;
 use super::sensor;
 use super::kf;
 use std::f32::consts::PI;
 
-pub struct Agent {
+pub struct Agent <'a>  {
+  sensor: sensor::Sensor,
+  kf: kf::KFilterPose<'a>,
+  pose: na::Vector3<f32>,
   nuo: f32,
   omegao: f32,
-  // distance_dev_rate: f32,
-  // direction_dev: f32,
-  // pose_change: na::Vector3<f32>,
+  landsize: usize,
 }
 
-impl Agent {
-  pub fn new( ) -> Self {
-  // pub fn new( ) -> Self {}
-  // pub fn new( initial_state_mean: &na::Vector3<f32>, initial_cov: f32) -> Self {
-      // let system_cov = &Stds {nn:0.19, no:0.001, oo:0.13, on:0.2,};
-      // let belief = Belief { mean: *initial_state_mean, cov: initial_cov * na::Matrix3::identity()};
-      Self{ nuo: 0.2, omegao: 2.*PI * 10./360. }
-      // Self{ belief, system_cov, distance_bias_rate_std: 0.14, direction_bias: 0.05, pose_change: na::Vector3::zeros() }
+impl <'a> Agent <'a> {
+  pub fn new(initial_pose: &na::Vector3<f32>, size: usize) ->  Self {
+    let init_cov: f32 = 1e-10;
+    let sensor = sensor::Sensor::new();
+    let kf = kf::KFilterPose::new(&initial_pose, init_cov);
+    Self{ sensor, kf, pose: *initial_pose, nuo: 0.2, omegao: 2.*PI * 10./360., landsize: size }
   }
 
-  pub fn pose_estimate( & mut self, pose: &na::Vector3<f32>, nu: f32, lpose: &na::Vector3<f32>, time: f32 ) -> na::Vector3<f32> {
-    // let pose = na::Vector3::new(x, y, theta);
+  pub fn pose_estimate( & mut self, nu: f32, omega: f32, lpose: &na::Matrix3<f32>, time: f32, pose: &na::Vector3<f32> ) -> na::Vector3<f32> {
     // let nu = (pose[1] - self.belief.mean[1]).hypot(pose[0] - self.belief.mean[0])/time;
-    let omega = pose[2] / time;
-    // フィルタリング分布取得
-    let sensor = sensor::Sensor::new();
-    let mut obj_dis = sensor.observation_predict(&pose, &lpose);
-    obj_dis = sensor.noize(&obj_dis);
+    // let omega = pose[2] / time;
+    // let mut obj_dis  = na::Matrix2x1::zeros();
+    let mut kf_state = na::Vector3::zeros();
 
-    /* kf */
-    let init_cov: f32 = 0.01;
-    let mut kf = kf::KFilterPose::new(&pose, init_cov);
-    kf.kf_predict(self.nuo, self.omegao, time);
-    let kf_state = kf.kf_update(&obj_dis, &lpose);
+    /* predict state transition */
+    self.kf.kf_predict(self.nuo, self.omegao, time);
 
+    /* Process by landmark */
+    for i in 0..self.landsize {
+      
+      /* calculate landmark */
+      let index: [usize;3] = [0*3+i, 1*3+i, 2*3+i];
+      let lpose_row:na::Vector3<f32> = na::Vector3::new(lpose[index[0]], lpose[index[1]], lpose[index[2]]);
+
+      /* calculate landmark distance/direct */
+      let mut obj_dis = self.sensor.observation_predict(pose, &lpose_row);
+      /* refrect noize etc */
+      obj_dis = self.sensor.noize(&obj_dis);
+
+      /* calculate kfiltered pose*/
+      kf_state = self.kf.kf_update(&obj_dis, &lpose_row);
+    }
+
+    /* update old value */
     self.nuo = nu;
-    self.omegao = omega; //nu, omegaの更新タイミングは？
+    self.omegao = omega;
+    self.pose = kf_state;
 
+    /* robot */
     // robot_noise(&kf_state, time);
     // robot_move(&kf_state, time);
     // robot_noise2(&kf_state, time); //sensor処理にて代替
