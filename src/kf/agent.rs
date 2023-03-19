@@ -16,7 +16,7 @@ impl<'a> Agent<'a> {
     pub fn new(initial_pose: &na::Vector3<f32>, size: usize) -> Self {
         let init_cov: f32 = 1e-10;
         let sensor = sensor::Sensor::new();
-        let kf = kf::KFilterPose::new(&initial_pose, init_cov);
+        let kf = kf::KFilterPose::new(initial_pose, init_cov);
         Self {
             sensor,
             kf,
@@ -46,7 +46,7 @@ impl<'a> Agent<'a> {
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
-            let index: [usize; 3] = [0 * 3 + i, 1 * 3 + i, 2 * 3 + i];
+            let index: [usize; 3] = [i, 3 + i, 6 + i];
             let lpose_row: na::Vector3<f32> =
                 na::Vector3::new(lpose[index[0]], lpose[index[1]], lpose[index[2]]);
 

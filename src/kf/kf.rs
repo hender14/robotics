@@ -1,5 +1,5 @@
-use nalgebra as na;
 use super::sensor;
+use nalgebra as na;
 
 pub struct Stds {
     pub nn: f32,
@@ -9,13 +9,12 @@ pub struct Stds {
 }
 
 pub fn mat_m(nu: f32, omega: f32, time: f32, stds: &Stds) -> na::Matrix2<f32> {
-    let mat = na::Matrix2::new(
+    na::Matrix2::new(
         stds.nn.powf(2.) * nu.abs() / time + stds.no.powf(2.) * omega.abs() / time,
         0.,
         0.,
         stds.on.powf(2.) * nu.abs() / time + stds.oo.powf(2.) * omega.abs() / time,
-    );
-    mat
+    )
 }
 
 fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
@@ -23,15 +22,14 @@ fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
     let ct = theta.cos();
     let stw = (theta + omega * time).sin();
     let ctw = (theta + omega * time).cos();
-    let mat = na::Matrix3x2::new(
+    na::Matrix3x2::new(
         (stw - st) / omega,
         (-nu / (omega.powf(2.0)) * (stw - st)) + (nu / omega * time * ctw),
         (-ctw + ct) / omega,
         (-nu / (omega.powf(2.0)) * (-ctw + ct)) + (nu / omega * time * stw),
         0.,
         time,
-    );
-    mat
+    )
 }
 
 fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
@@ -47,20 +45,18 @@ fn mat_h(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x3<
     let mux = pose[0];
     let muy = pose[1];
     let q = (mux - mx).powf(2.0) + (muy - my).powf(2.0);
-    let mat = na::Matrix2x3::new(
+    na::Matrix2x3::new(
         (mux - mx) / q.sqrt(),
         (muy - my) / q.sqrt(),
         0.,
         (my - muy) / q,
         (mux - mx) / q,
         -1.0,
-    );
-    mat
+    )
 }
 
 fn mat_q(distance_dev: f32, direction_dev: f32) -> na::Matrix2<f32> {
-    let mat = na::Matrix2::new(distance_dev.powf(2.0), 0., 0., direction_dev.powf(2.0));
-    mat
+    na::Matrix2::new(distance_dev.powf(2.0), 0., 0., direction_dev.powf(2.0))
 }
 
 pub struct KFilterPose<'a> {
@@ -108,8 +104,8 @@ impl<'a> KFilterPose<'a> {
         obj_dis: &na::Vector2<f32>,
         landmark: &na::Vector3<f32>,
     ) -> na::Vector3<f32> {
-        let h = mat_h(&self.belief.mean, &landmark);
-        let estimated_z = sensor::observation_function(&self.belief.mean, &landmark);
+        let h = mat_h(&self.belief.mean, landmark);
+        let estimated_z = sensor::observation_function(&self.belief.mean, landmark);
         let z = obj_dis;
         let q = mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
         let kalman_gain = self.belief.cov
