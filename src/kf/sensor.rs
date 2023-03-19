@@ -18,8 +18,7 @@ pub fn observation_function(
     while phi < -PI {
         phi += 2. * PI;
     }
-    let mat = na::Matrix2x1::new(diff[0].hypot(diff[1]), phi);
-    mat
+    na::Matrix2x1::new(diff[0].hypot(diff[1]), phi)
 }
 
 impl Sensor {
@@ -43,12 +42,11 @@ impl Sensor {
         while phi < -PI {
             phi += 2. * PI;
         }
-        let mat = na::Matrix2x1::new(diff[0].hypot(diff[1]), phi);
-        mat
+        na::Matrix2x1::new(diff[0].hypot(diff[1]), phi)
     }
 
     pub fn noise(&self, obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
-        let mat = Sensor::bias(&self, &obj_dis);
+        let mat = Sensor::bias(self, obj_dis);
         mat
     }
     fn bias(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
