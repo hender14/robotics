@@ -20,7 +20,7 @@ Devops面では、アジャイル開発による機能のupdateを実施する�
 
 ### Test
 
-Test/Build/AWS環境へのUploadは、Github Actionによって自動的に行われます。
+Testは、Github Actionによって自動的に行われます。
 
 #### 設定ファイル
 * [テストファイル](https://github.com/hender14/robotics/tree/devlop/tests/testkf.rs)
