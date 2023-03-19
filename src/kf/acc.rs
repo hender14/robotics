@@ -71,9 +71,9 @@ fn filter_update(&mut self, predicted_state_mean: f64, predicted_state_cov: f64,
     let estimated_z = np.array(np.hypot([predicted_state_mean - self.belief.mean]) ).T;
     let z = np.array(np.hypot([acc - self.belief.mean]) );
     let Q = matQ(estimated_z[0]*self.distance_dev_rate, self.direction_dev);
-    let kalman_gain = (predicted_state_cov @ (H.T) @ np.linalg.inv(H @ predicted_state_cov @ (H.T)+ Q) );
-    let filtered_state_mean = (predicted_state_mean + kalman_gain @ (z - estimated_z) );
-    let filtered_state_cov = (predicted_state_cov - (kalman_gain @ H @ predicted_state_cov) );
+    let kalman_gain = (predicted_state_cov * (H.T) * np.linalg.inv(H * predicted_state_cov * (H.T)+ Q) );
+    let filtered_state_mean = (predicted_state_mean + kalman_gain * (z - estimated_z) );
+    let filtered_state_cov = (predicted_state_cov - (kalman_gain * H * predicted_state_cov) );
     self.acc_change = filtered_state_mean - self.belief.mean;
     self.belief.mean = filtered_state_mean;
     self.belief.cov = filtered_state_cov;
@@ -83,8 +83,8 @@ fn filter_update(&mut self, predicted_state_mean: f64, predicted_state_cov: f64,
 
 fn acc_estimate(&mut self, acc: f64, x: f64, y: f64) -> f64 {
     // フィルタリング分布取得
-    let predicted_state_mean, predicted_state_cov = self.filter_predict();
-    let filtered_state_mean, filtered_state_cov = self.filter_update(predicted_state_mean, predicted_state_cov, acc);
+    let predicted_state = self.filter_predict();
+    let filtered_state = self.filter_update(predicted_state_mean, predicted_state_cov, acc);
 
     return filtered_state_mean;
 }
