@@ -1,3 +1,8 @@
+// use rand::Rng;
+use rand::prelude::{Distribution, thread_rng};
+// use rand::distributions::Normal;
+use rand_distr::Normal;
+// use rand_distr::{Normal, Distribution};
 use nalgebra as na;
 use std::f32::consts::PI;
 
@@ -43,6 +48,19 @@ impl Sensor {
             phi += 2. * PI;
         }
         na::Matrix2x1::new(diff[0].hypot(diff[1]), phi)
+    }
+
+    pub fn psi_predict(
+        &self,
+        pose: &na::Vector3<f32>,
+        landmark: &na::Vector3<f32>,
+    ) -> f32 {
+        let noise = PI / 90.;
+        let mut rng = thread_rng();
+        let diff = pose - landmark;
+        let normal = Normal::new((diff[1]).atan2(diff[0]), noise).unwrap();
+        let psi = normal.sample(& mut rng);
+        psi
     }
 
     pub fn noise(&self, obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {

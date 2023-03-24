@@ -2,6 +2,9 @@ use super::kf;
 use super::sensor;
 use nalgebra as na;
 use std::f32::consts::PI;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
 
 pub struct Agent<'a> {
     sensor: sensor::Sensor,
@@ -9,6 +12,8 @@ pub struct Agent<'a> {
     pose: na::Vector3<f32>,
     nuo: f32,
     omegao: f32,
+    zlist: [[f32;3];6],
+    time: f32,
     landsize: usize,
 }
 
@@ -17,6 +22,8 @@ impl<'a> Agent<'a> {
         let init_cov: f32 = 1e-10;
         let sensor = sensor::Sensor::new();
         let kf = kf::KFilterPose::new(initial_pose, init_cov);
+        // ファイルを開く
+        File::create("output.txt").expect("ファイルを作成できませんでした");
         Self {
             sensor,
             kf,
@@ -24,6 +31,8 @@ impl<'a> Agent<'a> {
             nuo: 0.2,                     /* preliminary */
             omegao: 2. * PI * 10. / 360., /* preliminary */
             landsize: size,
+            zlist: Default::default(),
+            time: 0.,
         }
     }
 
@@ -31,7 +40,7 @@ impl<'a> Agent<'a> {
         &mut self,
         nu: f32,
         omega: f32,
-        lpose: &na::Matrix3<f32>,
+        lpose: &na::Matrix6x3<f32>,
         time: f32,
         pose: &na::Vector3<f32>,
     ) -> na::Vector3<f32> {
@@ -43,6 +52,7 @@ impl<'a> Agent<'a> {
         /* predict state transition */
         self.kf.kf_predict(self.nuo, self.omegao, time);
 
+        let mut zlist: [[f32; 3];6] = Default::default();
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
@@ -52,6 +62,8 @@ impl<'a> Agent<'a> {
 
             /* calculate landmark distance/direct */
             let mut obj_dis = self.sensor.observation_predict(pose, &lpose_row);
+            let obj = self.sensor.psi_predict(&self.pose, &lpose_row);
+            zlist[i] = [obj_dis[0], obj_dis[1], obj];
             /* refrect noize etc */
             obj_dis = self.sensor.noise(&obj_dis);
 
@@ -60,9 +72,27 @@ impl<'a> Agent<'a> {
         }
 
         /* update old value */
+        self.time += time;
         self.nuo = nu;
         self.omegao = omega;
         self.pose = kf_state;
+        self.zlist = zlist;
+
+        // let file = File::open("output.txt").expect("ファイルを作成できませんでした");
+        let file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open("output.txt")
+        .expect("ファイルを開けませんでした");
+                // let file = File::create("output.txt").expect("ファイルを作成できませんでした");
+        let mut writer = BufWriter::new(file);
+
+        // 変数をファイルに書き込む
+        writeln!(writer, "u {} {} {}", self.time, nu, omega).expect("書き込みエラー");
+        writeln!(writer, "x {} {} {} {}", self.time, kf_state[0], kf_state[1], kf_state[2]).expect("書き込みエラー");
+        for i in 0..self.landsize {
+            writeln!(writer, "z {} {} {} {}", self.time, zlist[i][0], zlist[i][1], zlist[i][2]).expect("書き込みエラー");
+        }
 
         /* robot */
         // robot_noise(&kf_state, time);
