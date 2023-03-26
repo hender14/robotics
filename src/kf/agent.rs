@@ -12,7 +12,7 @@ pub struct Agent<'a> {
     pose: na::Vector3<f32>,
     nuo: f32,
     omegao: f32,
-    zlist: [[f32;3];6],
+    zlist: [[f32; 3]; 6],
     time: f32,
     landsize: usize,
 }
@@ -52,11 +52,12 @@ impl<'a> Agent<'a> {
         /* predict state transition */
         self.kf.kf_predict(self.nuo, self.omegao, time);
 
-        let mut zlist: [[f32; 3];6] = Default::default();
+        let mut zlist: [[f32; 3]; 6] = Default::default();
+        let mut zres: [bool; 6] = Default::default();
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
-            let index: [usize; 3] = [i, 3 + i, 6 + i];
+            let index: [usize; 3] = [i, self.landsize + i, self.landsize*2 + i];
             let lpose_row: na::Vector3<f32> =
                 na::Vector3::new(lpose[index[0]], lpose[index[1]], lpose[index[2]]);
 
@@ -65,7 +66,8 @@ impl<'a> Agent<'a> {
             let obj = self.sensor.psi_predict(&self.pose, &lpose_row);
             zlist[i] = [obj_dis[0], obj_dis[1], obj];
             /* refrect noize etc */
-            obj_dis = self.sensor.noise(&obj_dis);
+            zres[i] = self.sensor.visible(&obj_dis);
+            obj_dis = self.sensor.exter_dist(&obj_dis);
 
             /* calculate kfiltered pose*/
             kf_state = self.kf.kf_update(&obj_dis, &lpose_row);
@@ -80,18 +82,30 @@ impl<'a> Agent<'a> {
 
         // let file = File::open("output.txt").expect("ファイルを作成できませんでした");
         let file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open("output.txt")
-        .expect("ファイルを開けませんでした");
-                // let file = File::create("output.txt").expect("ファイルを作成できませんでした");
+            .write(true)
+            .append(true)
+            .open("output.txt")
+            .expect("ファイルを開けませんでした");
+        // let file = File::create("output.txt").expect("ファイルを作成できませんでした");
         let mut writer = BufWriter::new(file);
 
         // 変数をファイルに書き込む
-        writeln!(writer, "u {} {} {}", self.time, nu, omega).expect("書き込みエラー");
-        writeln!(writer, "x {} {} {} {}", self.time, kf_state[0], kf_state[1], kf_state[2]).expect("書き込みエラー");
+        writeln!(writer, "0 {} {} {}", self.time, nu, omega).expect("書き込みエラー");
+        writeln!(
+            writer,
+            "1 {} {} {} {}",
+            self.time, kf_state[0], kf_state[1], kf_state[2]
+        )
+        .expect("書き込みエラー");
         for i in 0..self.landsize {
-            writeln!(writer, "z {} {} {} {}", self.time, zlist[i][0], zlist[i][1], zlist[i][2]).expect("書き込みエラー");
+            if zres[i] {
+                writeln!(
+                    writer,
+                    "2 {} {} {} {} {}",
+                    self.time, i, zlist[i][0], zlist[i][1], zlist[i][2]
+                )
+                .expect("書き込みエラー");
+            }
         }
 
         /* robot */
