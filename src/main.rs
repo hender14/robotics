@@ -12,13 +12,13 @@ use std::fs::File;
 fn main() {
     let root = BitMapBackend::new("out/plot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
-    
+
     let mut chart = ChartBuilder::on(&root)
-    .caption("Point Cloud", ("sans-serif", 30))
-    .x_label_area_size(30)
-    .y_label_area_size(30)
-    .build_cartesian_2d(-5.0..5.0, -5.0..5.0)
-    .unwrap();
+        .caption("Point Cloud", ("sans-serif", 30))
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(-5.0..5.0, -5.0..5.0)
+        .unwrap();
 
     File::create("out/output.txt").expect("ファイルを作成できませんでした");
 
@@ -35,7 +35,7 @@ fn main() {
     /* create object */
     let mut agent = agent::Agent::new(&pose, lpose.1);
 
-/* main loop */
+    /* main loop */
     for _i in 0..loop_num {
         /* update robot position */
         pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
@@ -46,7 +46,7 @@ fn main() {
     }
     /* slam */
     slam::slam();
-    
+
     /* plot */
     plot::plot_pose(&mut chart);
     plot::plot_land(&mut chart);

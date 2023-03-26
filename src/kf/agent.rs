@@ -8,7 +8,7 @@ use std::io::{BufWriter, Write};
 pub struct Agent<'a> {
     sensor: sensor::Sensor,
     kf: kf::KFilterPose<'a>,
-    pose: na::Vector3<f32>,
+    pub pose: na::Vector3<f32>,
     nuo: f32,
     omegao: f32,
     zlist: [[f32; 3]; 6],

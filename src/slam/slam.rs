@@ -34,12 +34,11 @@ pub fn slam() {
                 obsedges.precision_matrix();
                 (omega, xi) = obsedges.add_edge(omega, xi);
 
-                for i in 0..array.0.len()-1 {
-                    let mut motionedges = MotionEdge::new(i, i+1, array.0.clone());
+                for i in 0..array.0.len() - 1 {
+                    let mut motionedges = MotionEdge::new(i, i + 1, array.0.clone());
                     motionedges.action_matrix(array.2.clone(), 1.);
                     (omega, xi) = motionedges.add_edge(omega, xi);
                 }
-
             }
         }
         // println!("omega:{}, xi:{}", omega, xi);

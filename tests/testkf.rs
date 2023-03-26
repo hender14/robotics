@@ -32,7 +32,8 @@ mod tests {
             pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
 
             /* kalman filter */
-            out = agent.pose_estimate(nu, omega, &lpose.0, time, &pose);
+            agent.pose_estimate(nu, omega, &lpose.0, time, &pose);
+            out = agent.pose;
         }
 
         /* validate */
