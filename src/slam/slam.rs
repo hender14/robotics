@@ -1,42 +1,241 @@
-use super::super::debug::plot;
+use itertools::Itertools;
+use nalgebra as na;
+use std::f32::consts::PI;
+use super::super::common::read;
 
-fn slam() {
-    let array = plot::read();
-    let dim = array.0.len().pow(3);
 
-    for n in 1..10000 {
-        // エッジ、大きな精度行列、係数ベクトルの作成##
-        let edges = make_edges(array.0, array.1);  //返す変数が2つになるので「_」で合わせる
+pub fn slam() {
+    for _n in 0..10 {
+        let mut count = 0;
+        let array = read::pose_read();
+        // let mut land_klist: [Vec<(f32, f32, f32, f32)>;6] = Default::default();
+        let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
 
-    //     for i in range(len(hat_xs)-1): #行動エッジの追加
-    //         edges.append(MotionEdge(i, i+1, hat_xs, us, delta))
-            
-    //     Omega = np.zeros((dim, dim))
-    //     xi = np.zeros(dim)
-    //     Omega[0:3, 0:3] += np.eye(3)*1000000
+        for row in array.1 {
+            for z in row {
+                let l_id = z.0 as usize;
+                land_klist[l_id].push((count as f32, z));
+            }
+            count += 1;
+        }
+        // println!("land_klist: {:?}", land_klist);
+        let mut edges: ObsEdge;
+        let xdim = array.0.len() * 3;
+        let mut omega = na::DMatrix::<f32>::zeros(xdim, xdim);
+        for i in 0..3 {
+            omega[(i, i)] = 1000000.;
+        }
+        let mut xi = na::DVector::<f32>::zeros(xdim);
 
-    //     ##軌跡を動かす量（差分）の計算##
-    //     for e in edges:
-    //         add_edge(e, Omega, xi) 
+        for index in 0..land_klist.len() {
+            for comb in land_klist[index].iter().combinations(2) {
+                edges = ObsEdge::new(comb[0].0, comb[1].0, comb[0].1, comb[1].1, array.0.clone());
+                edges.precision_matrix();
+                (omega, xi) = edges.add_edge(omega, xi);
+            }
+        }
+        // println!("omega:{}, xi:{}", omega, xi);
 
-    //     delta_xs = np.linalg.inv(Omega).dot(xi) 
-        
-    //     ##推定値の更新##
-    //     for i in range(len(hat_xs)):
-    //         hat_xs[i] += delta_xs[i*3:(i+1)*3] 
-            
-    //     ##終了判定##
-    //     diff = np.linalg.norm(delta_xs) 
-    //     print("{}回目の繰り返し: {}".format(n, diff))
-    //     if diff < 0.02:
-    //         draw(hat_xs, zlist, edges)
-    //         break
+        let delta_xs = (omega.try_inverse().unwrap()) * xi;
+        for i in 0..array.0.len() {
+            let x = array.0[i].0 + delta_xs[i * 3];
+            let y = array.0[i].1 + delta_xs[i * 3 + 1];
+            let theta = array.0[i].2 + delta_xs[i * 3 + 2];
+            println!("x:{}, y:{}, theta:{}", x, y, theta);
+        }
+
+        let diff = delta_xs.norm();
+        println!("diff:{}", diff);
+        if diff < 0.02 {
+            println!("収束");
+            break;
+        }
     }
 }
 
-def make_edges(hat_xs, zlist):
-    edges = []
-    for i in range(len(hat_xs)):
-        for j in range(len(zlist[i][1])//3):
-            edges.append(ObserveEdge(i, zlist[i][1][j*3:(j+1)*3], zlist[i][0], hat_xs))
-    return edges
+pub struct ObsEdge {
+    t1: usize,
+    t2: usize,
+    x1: na::Vector3<f32>,
+    x2: na::Vector3<f32>,
+    z1: na::Vector3<f32>,
+    z2: na::Vector3<f32>,
+    omega_upperleft: na::Matrix3<f32>,
+    omega_upperright: na::Matrix3<f32>,
+    omega_bottomleft: na::Matrix3<f32>,
+    omega_bottomright: na::Matrix3<f32>,
+    xi_upper: na::Vector3<f32>,
+    xi_bottom: na::Vector3<f32>,
+}
+
+impl ObsEdge {
+    pub fn new(
+        t1_f32: f32,
+        t2_f32: f32,
+        z1_vec: (f32, f32, f32, f32),
+        z2_vec: (f32, f32, f32, f32),
+        xs_vec: Vec<(f32, f32, f32)>,
+    ) -> Self {
+        assert_eq!(z1_vec.0, z2_vec.0);
+        let t1 = t1_f32 as usize;
+        let t2 = t2_f32 as usize;
+        let x1 = na::Vector3::new(xs_vec[t1].0, xs_vec[t1].1, xs_vec[t1].2);
+        let x2 = na::Vector3::new(xs_vec[t2].0, xs_vec[t2].1, xs_vec[t2].2);
+        let z1 = na::Vector3::new(z1_vec.1, z1_vec.2, z1_vec.3);
+        let z2 = na::Vector3::new(z2_vec.1, z2_vec.2, z2_vec.3);
+
+        Self {
+            t1,
+            t2,
+            x1,
+            x2,
+            z1,
+            z2,
+            omega_upperleft: Default::default(),
+            omega_upperright: Default::default(),
+            omega_bottomleft: Default::default(),
+            omega_bottomright: Default::default(),
+            xi_upper: Default::default(),
+            xi_bottom: Default::default(),
+        }
+    }
+
+    pub fn precision_matrix(&mut self) {
+        let sensor_noise_rate = [0.14, 0.05, 0.05];
+        let s1 = (self.x1[2] + self.z1[1]).sin();
+        let c1 = (self.x1[2] + self.z1[1]).cos();
+        let s2 = (self.x2[2] + self.z2[1]).sin();
+        let c2 = (self.x2[2] + self.z2[1]).cos();
+
+        let mut hat_e = self.x2 - self.x1
+            + na::Vector3::new(
+                self.z2[0] * c2 - self.z1[0] * c1,
+                self.z2[0] * s2 - self.z1[0] * s1,
+                self.z2[1] - self.z2[2] - self.z1[1] + self.z1[2],
+            );
+        while hat_e[2] >= PI {
+            hat_e[2] -= PI * 2.0;
+        }
+        while hat_e[2] < PI {
+            hat_e[2] += PI * 2.0;
+        }
+
+        let q1_diag = na::Matrix3x1::new(
+            (self.z1[0] * sensor_noise_rate[0]).powi(2),
+            sensor_noise_rate[1].powi(2),
+            sensor_noise_rate[2].powi(2),
+        );
+        let q1 = na::Matrix3::from_diagonal(&q1_diag);
+        let r1 = -na::Matrix3::new(
+            c1,
+            -self.z1[0] * s1,
+            0.,
+            s1,
+            self.z1[0] * c1,
+            0.,
+            0.,
+            1.,
+            -1.,
+        );
+
+        let q2_diag = na::Vector3::new(
+            (self.z2[0] * sensor_noise_rate[0]).powi(2),
+            sensor_noise_rate[1].powi(2),
+            sensor_noise_rate[2].powi(2),
+        );
+        let q2 = na::Matrix3::from_diagonal(&q2_diag);
+        let r2 = -na::Matrix3::new(
+            c2,
+            -self.z2[0] * s2,
+            0.,
+            s2,
+            self.z2[0] * c2,
+            0.,
+            0.,
+            1.,
+            -1.,
+        );
+        let sigma1 = r1 * q1 * r1.transpose() + r2 * q2 * r2.transpose();
+        let omega1 = sigma1.try_inverse().unwrap();
+
+        let b1 = -na::Matrix3::new(
+            1.,
+            0.,
+            -self.z1[0] * s1,
+            0.,
+            1.,
+            self.z1[0] * c1,
+            0.,
+            0.,
+            1.,
+        );
+        let b2 = -na::Matrix3::new(
+            1.,
+            0.,
+            -self.z2[0] * s2,
+            0.,
+            1.,
+            self.z2[0] * c2,
+            0.,
+            0.,
+            1.,
+        );
+
+        self.omega_upperleft = b1.transpose() * omega1 * b1;
+        self.omega_upperright = b1.transpose() * omega1 * b2;
+        self.omega_bottomleft = b2.transpose() * omega1 * b1;
+        self.omega_bottomright = b2.transpose() * omega1 * b2;
+
+        self.xi_upper = -b1.transpose() * omega1 * hat_e;
+        self.xi_bottom = -b2.transpose() * omega1 * hat_e;
+    }
+
+    pub fn add_edge(
+        self,
+        mut omega: na::DMatrix<f32>,
+        mut xi: na::DVector<f32>,
+    ) -> (na::DMatrix<f32>, na::DVector<f32>) {
+        let f1 = self.t1 * 3;
+        let f2 = self.t2 * 3;
+        let t1 = f1 + 3;
+        let t2 = f2 + 3;
+    
+        omega = ObsEdge::add_edge_omega(omega, &self.omega_upperleft, f1, f1, t1, t1);
+        omega = ObsEdge::add_edge_omega(omega, &self.omega_upperright, f1, f2, t1, t2);
+        omega = ObsEdge::add_edge_omega(omega, &self.omega_bottomleft, f2, f1, t2, t1);
+        omega = ObsEdge::add_edge_omega(omega, &self.omega_bottomright, f2, f2, t2, t2);
+    
+        xi = ObsEdge::add_edge_xi(xi, &self.xi_upper, f1, t1);
+        xi = ObsEdge::add_edge_xi(xi, &self.xi_bottom, f2, t2);
+    
+        (omega, xi)
+    }
+    
+    pub fn add_edge_omega(
+        mut omega: na::DMatrix<f32>,
+        omega_part: &na::Matrix3<f32>,
+        f1: usize,
+        f2: usize,
+        t1: usize,
+        t2: usize,
+    ) -> na::DMatrix<f32> {
+        for i in f1..t1 {
+            for j in f2..t2 {
+                omega[(i, j)] += omega_part[(i - f1, j - f2)];
+            }
+        }
+        omega
+    }
+    
+    fn add_edge_xi(
+        mut xi: na::DVector<f32>,
+        xi_upper: &na::Vector3<f32>,
+        f1: usize,
+        t1: usize,
+    ) -> na::DVector<f32> {
+        for i in f1..t1 {
+            xi[i] += xi_upper[i - f1];
+        }
+        xi
+    }
+}

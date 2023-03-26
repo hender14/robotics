@@ -74,10 +74,10 @@ impl Sensor {
             && polarpos[1] <= self.direction_range[1];
     }
 
-    pub fn exter_dist(&self, obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
-        let mat = Sensor::bias(self, obj_dis);
-        let mat = Sensor::noise(self, obj_dis);
-        mat
+    pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
+        obj_dis = Sensor::bias(self, &obj_dis);
+        obj_dis = Sensor::noise(self, &obj_dis);
+        obj_dis
     }
     fn bias(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         let mut mat = na::Matrix2x1::zeros();
@@ -88,7 +88,7 @@ impl Sensor {
 
     fn noise(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         let mut rng = thread_rng();
-        let normal_ell = Normal::new(obj_dis[0], obj_dis[0]*self.distance_noise_rate).unwrap();
+        let normal_ell = Normal::new(obj_dis[0], obj_dis[0] * self.distance_noise_rate).unwrap();
         let normal_phi = Normal::new(obj_dis[1], self.direction_noise).unwrap();
         let ell = normal_ell.sample(&mut rng);
         let phi = normal_phi.sample(&mut rng);

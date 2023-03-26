@@ -57,7 +57,7 @@ impl<'a> Agent<'a> {
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
-            let index: [usize; 3] = [i, self.landsize + i, self.landsize*2 + i];
+            let index: [usize; 3] = [i, self.landsize + i, self.landsize * 2 + i];
             let lpose_row: na::Vector3<f32> =
                 na::Vector3::new(lpose[index[0]], lpose[index[1]], lpose[index[2]]);
 
@@ -67,7 +67,7 @@ impl<'a> Agent<'a> {
             zlist[i] = [obj_dis[0], obj_dis[1], obj];
             /* refrect noize etc */
             zres[i] = self.sensor.visible(&obj_dis);
-            obj_dis = self.sensor.exter_dist(&obj_dis);
+            obj_dis = self.sensor.exter_dist(obj_dis);
 
             /* calculate kfiltered pose*/
             kf_state = self.kf.kf_update(&obj_dis, &lpose_row);
