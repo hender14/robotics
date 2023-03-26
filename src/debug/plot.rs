@@ -67,10 +67,10 @@ pub fn plot_edge(
             let phi = zarray[i].2;
             let x2: f32 = x1 + ell * ((theta + phi).cos());
             let y2: f32 = y1 + ell * ((theta + phi).sin());
-            println!(
-                "x1:{}, y1:{}, x2:{}, y2:{}, ell:{}, phi:{}",
-                x1, y1, x2, y2, ell, phi
-            );
+            // println!(
+            //     "x1:{}, y1:{}, x2:{}, y2:{}, ell:{}, phi:{}",
+            //     x1, y1, x2, y2, ell, phi
+            // );
             // let poly: Polyline = [(x1 as f64, y1 as f64), (x2 as f64, y2 as f64)].iter().copied().into_polyline();
             // let line_style = BLACK.stroke_width(2);
             // let line_series = PathElement::new(poly, line_style);

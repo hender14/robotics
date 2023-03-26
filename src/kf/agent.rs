@@ -2,7 +2,6 @@ use super::kf;
 use super::sensor;
 use nalgebra as na;
 use std::f32::consts::PI;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 
@@ -22,8 +21,6 @@ impl<'a> Agent<'a> {
         let init_cov: f32 = 1e-10;
         let sensor = sensor::Sensor::new();
         let kf = kf::KFilterPose::new(initial_pose, init_cov);
-        // ファイルを開く
-        File::create("output.txt").expect("ファイルを作成できませんでした");
         Self {
             sensor,
             kf,
@@ -43,7 +40,7 @@ impl<'a> Agent<'a> {
         lpose: &na::Matrix6x3<f32>,
         time: f32,
         pose: &na::Vector3<f32>,
-    ) -> na::Vector3<f32> {
+    ) {
         // let nu = (pose[1] - self.belief.mean[1]).hypot(pose[0] - self.belief.mean[0])/time;
         // let omega = pose[2] / time;
         // let mut obj_dis  = na::Matrix2x1::zeros();
@@ -84,9 +81,8 @@ impl<'a> Agent<'a> {
         let file = OpenOptions::new()
             .write(true)
             .append(true)
-            .open("output.txt")
+            .open("out/output.txt")
             .expect("ファイルを開けませんでした");
-        // let file = File::create("output.txt").expect("ファイルを作成できませんでした");
         let mut writer = BufWriter::new(file);
 
         // 変数をファイルに書き込む
@@ -112,6 +108,5 @@ impl<'a> Agent<'a> {
         // robot_noise(&kf_state, time);
         // robot_move(&kf_state, time);
         // robot_noise2(&kf_state, time); //sensor処理にて代替
-        kf_state
     }
 }

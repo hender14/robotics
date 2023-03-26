@@ -17,7 +17,7 @@ pub fn mat_m(nu: f32, omega: f32, time: f32, stds: &Stds) -> na::Matrix2<f32> {
     )
 }
 
-fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
+pub fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
     let st = theta.sin();
     let ct = theta.cos();
     let stw = (theta + omega * time).sin();
@@ -32,14 +32,14 @@ fn mat_a(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3x2<f32> {
     )
 }
 
-fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
+pub fn mat_f(nu: f32, omega: f32, time: f32, theta: f32) -> na::Matrix3<f32> {
     let mut mat = na::Matrix3::identity();
     mat[(0, 2)] = (nu / omega) * ((theta + omega * time).cos() - theta.cos());
     mat[(1, 2)] = (nu / omega) * ((theta + omega * time).sin() - theta.sin());
     mat
 }
 
-fn mat_h(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x3<f32> {
+pub fn mat_h(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x3<f32> {
     let mx = landmark[0];
     let my = landmark[1];
     let mux = pose[0];
@@ -55,7 +55,7 @@ fn mat_h(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> na::Matrix2x3<
     )
 }
 
-fn mat_q(distance_dev: f32, direction_dev: f32) -> na::Matrix2<f32> {
+pub fn mat_q(distance_dev: f32, direction_dev: f32) -> na::Matrix2<f32> {
     na::Matrix2::new(distance_dev.powf(2.0), 0., 0., direction_dev.powf(2.0))
 }
 
