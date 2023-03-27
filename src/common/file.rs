@@ -1,5 +1,9 @@
+use nalgebra as na;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fs::OpenOptions;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+
+const FILEPATH: &str = "out/output.txt";
 
 pub fn pose_read() -> (
     Vec<(f32, f32, f32)>,
@@ -9,7 +13,7 @@ pub fn pose_read() -> (
     let mut hat_xs: Vec<(f32, f32, f32)> = vec![];
     let mut zlist: Vec<Vec<(f32, f32, f32, f32)>> = vec![vec![]];
     let mut us: Vec<(f32, f32)> = vec![];
-    let file = File::open("out/output.txt").expect("Failed to open file");
+    let file = File::open(&FILEPATH).expect("Failed to open file");
     let reader = BufReader::new(file);
     for line in reader.lines() {
         let line = line.unwrap();
@@ -38,4 +42,38 @@ pub fn pose_read() -> (
         }
     }
     (hat_xs, zlist, us)
+}
+
+pub fn write_init() {
+    File::create(&FILEPATH).expect("can not create file");
+}
+
+pub fn pose_write(
+    time: f32,
+    nu: f32,
+    omega: f32,
+    pose: &na::Vector3<f32>,
+    zres: &[bool; 6],
+    zlist: &[[f32; 3]; 6],
+) {
+    let file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(&FILEPATH)
+        .expect("can not open file");
+    let mut writer = BufWriter::new(file);
+
+    // 変数をファイルに書き込む
+    writeln!(writer, "0 {} {} {}", time, nu, omega).expect("err write");
+    writeln!(writer, "1 {} {} {} {}", time, pose[0], pose[1], pose[2]).expect("err write");
+    for i in 0..zlist.len() {
+        if zres[i] {
+            writeln!(
+                writer,
+                "2 {} {} {} {} {}",
+                time, i, zlist[i][0], zlist[i][1], zlist[i][2]
+            )
+            .expect("err write");
+        }
+    }
 }

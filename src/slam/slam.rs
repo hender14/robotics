@@ -1,4 +1,4 @@
-use super::super::common::read;
+use super::super::common::file;
 use super::super::kf::kf;
 use itertools::Itertools;
 use nalgebra as na;
@@ -7,20 +7,18 @@ use std::f32::consts::PI;
 pub fn slam() {
     for _n in 0..10 {
         let mut count = 0;
-        let array = read::pose_read();
-        // let mut land_klist: [Vec<(f32, f32, f32, f32)>;6] = Default::default();
+        let (hat_xs, zlist, us) = file::pose_read();
         let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
 
-        for row in array.1 {
+        for row in zlist {
             for z in row {
                 let l_id = z.0 as usize;
                 land_klist[l_id].push((count as f32, z));
             }
             count += 1;
         }
-        // println!("land_klist: {:?}", land_klist);
-        // let mut obsedges: ObsEdge;
-        let xdim = array.0.len() * 3;
+
+        let xdim = hat_xs.len() * 3;
         let mut omega = na::DMatrix::<f32>::zeros(xdim, xdim);
         for i in 0..3 {
             omega[(i, i)] = 1000000.;
@@ -30,13 +28,13 @@ pub fn slam() {
         for index in 0..land_klist.len() {
             for comb in land_klist[index].iter().combinations(2) {
                 let mut obsedges =
-                    ObsEdge::new(comb[0].0, comb[1].0, comb[0].1, comb[1].1, array.0.clone());
+                    ObsEdge::new(comb[0].0, comb[1].0, comb[0].1, comb[1].1, hat_xs.clone());
                 obsedges.precision_matrix();
                 (omega, xi) = obsedges.add_edge(omega, xi);
 
-                for i in 0..array.0.len() - 1 {
-                    let mut motionedges = MotionEdge::new(i, i + 1, array.0.clone());
-                    motionedges.action_matrix(array.2.clone(), 1.);
+                for i in 0..hat_xs.len() - 1 {
+                    let mut motionedges = MotionEdge::new(i, i + 1, hat_xs.clone());
+                    motionedges.action_matrix(us.clone(), 1.);
                     (omega, xi) = motionedges.add_edge(omega, xi);
                 }
             }
@@ -44,10 +42,10 @@ pub fn slam() {
         // println!("omega:{}, xi:{}", omega, xi);
 
         let delta_xs = (omega.try_inverse().unwrap()) * xi;
-        for i in 0..array.0.len() {
-            let _x = array.0[i].0 + delta_xs[i * 3];
-            let _y = array.0[i].1 + delta_xs[i * 3 + 1];
-            let _theta = array.0[i].2 + delta_xs[i * 3 + 2];
+        for i in 0..hat_xs.len() {
+            let _x = hat_xs[i].0 + delta_xs[i * 3];
+            let _y = hat_xs[i].1 + delta_xs[i * 3 + 1];
+            let _theta = hat_xs[i].2 + delta_xs[i * 3 + 2];
             // println!("x:{}, y:{}, theta:{}", x, y, theta);
         }
 

@@ -2,17 +2,16 @@ use super::kf;
 use super::sensor;
 use nalgebra as na;
 use std::f32::consts::PI;
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
 
 pub struct Agent<'a> {
     sensor: sensor::Sensor,
     kf: kf::KFilterPose<'a>,
     pub pose: na::Vector3<f32>,
-    nuo: f32,
-    omegao: f32,
-    zlist: [[f32; 3]; 6],
-    time: f32,
+    pub nuo: f32,
+    pub omegao: f32,
+    pub zres: [bool; 6],
+    pub zlist: [[f32; 3]; 6],
+    pub time: f32,
     landsize: usize,
 }
 
@@ -28,6 +27,7 @@ impl<'a> Agent<'a> {
             nuo: 0.2,                     /* preliminary */
             omegao: 2. * PI * 10. / 360., /* preliminary */
             landsize: size,
+            zres: Default::default(),
             zlist: Default::default(),
             time: 0.,
         }
@@ -43,14 +43,12 @@ impl<'a> Agent<'a> {
     ) {
         // let nu = (pose[1] - self.belief.mean[1]).hypot(pose[0] - self.belief.mean[0])/time;
         // let omega = pose[2] / time;
-        // let mut obj_dis  = na::Matrix2x1::zeros();
         let mut kf_state = na::Vector3::zeros();
 
         /* predict state transition */
         self.kf.kf_predict(self.nuo, self.omegao, time);
 
         let mut zlist: [[f32; 3]; 6] = Default::default();
-        let mut zres: [bool; 6] = Default::default();
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
@@ -63,7 +61,7 @@ impl<'a> Agent<'a> {
             let obj = self.sensor.psi_predict(&self.pose, &lpose_row);
             zlist[i] = [obj_dis[0], obj_dis[1], obj];
             /* refrect noize etc */
-            zres[i] = self.sensor.visible(&obj_dis);
+            self.zres[i] = self.sensor.visible(&obj_dis);
             obj_dis = self.sensor.exter_dist(obj_dis);
 
             /* calculate kfiltered pose*/
@@ -76,33 +74,6 @@ impl<'a> Agent<'a> {
         self.omegao = omega;
         self.pose = kf_state;
         self.zlist = zlist;
-
-        // let file = File::open("output.txt").expect("ファイルを作成できませんでした");
-        let file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open("out/output.txt")
-            .expect("ファイルを開けませんでした");
-        let mut writer = BufWriter::new(file);
-
-        // 変数をファイルに書き込む
-        writeln!(writer, "0 {} {} {}", self.time, nu, omega).expect("書き込みエラー");
-        writeln!(
-            writer,
-            "1 {} {} {} {}",
-            self.time, kf_state[0], kf_state[1], kf_state[2]
-        )
-        .expect("書き込みエラー");
-        for i in 0..self.landsize {
-            if zres[i] {
-                writeln!(
-                    writer,
-                    "2 {} {} {} {} {}",
-                    self.time, i, zlist[i][0], zlist[i][1], zlist[i][2]
-                )
-                .expect("書き込みエラー");
-            }
-        }
 
         /* robot */
         // robot_noise(&kf_state, time);

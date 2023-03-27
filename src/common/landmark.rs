@@ -1,6 +1,6 @@
 use nalgebra as na;
 
-/// データの取得（固定値）
+/* get landmark position */
 pub fn get_land() -> Vec<(f32, f32)> {
     return vec![
         (-4., 2.),
