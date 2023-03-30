@@ -1,40 +1,48 @@
+use robotics::common::file;
+use robotics::common::landmark;
+use robotics::debug::plot;
+use robotics::kf::kfagent;
+use robotics::kf::kfilter;
+use robotics::slam::slamagent;
+
 use nalgebra as na;
-use robotics::kf::agent;
-use robotics::kf::kf;
 use std::f32::consts::PI;
 
 fn main() {
     /* input condition */
-    let nu = 0.2;
-    let omega = 2. * PI * 10. / 360.;
+    let (nu, omega) = (0.2, 2. * PI * 10. / 360.);
     let time = 1.;
-    let lpose = dec_landmark();
-    let loop_num = 2;
-
-    /* initial */
-    let mut pose = na::Vector3::zeros();
+    let (lpose, landsize) = landmark::dec_landmark();
+    let loop_num = 36;
+    let mut pose = na::Vector3::new(0., 0., 0.);
+    file::write_init();
 
     /* create object */
-    let mut agent = agent::Agent::new(&pose, lpose.1);
+    let mut agent = kfagent::Agent::new(&pose, landsize);
 
     /* main loop */
-    for i in 0..loop_num {
+    for _i in 0..loop_num {
         /* update robot position */
-        pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
+        pose = kfilter::KFilterPose::state_transition(nu, omega, time, &pose);
 
         /* kalman filter */
-        let kf_pose = agent.pose_estimate(nu, omega, &lpose.0, time, &pose);
-        println!("{} pose: {}", i, &kf_pose);
-    }
-}
+        agent.pose_estimate(nu, omega, &lpose, time, &pose);
 
-/* config landmark */
-fn dec_landmark() -> (na::Matrix3<f32>, usize) {
-    let lpose1: na::RowVector3<f32> = na::RowVector3::new(-4., 2., 0.);
-    let lpose2: na::RowVector3<f32> = na::RowVector3::new(2., -3., 0.);
-    let lpose3: na::RowVector3<f32> = na::RowVector3::new(3., 3., 0.);
-    let lpose: na::Matrix3<f32> = na::Matrix3::from_rows(&[lpose1, lpose2, lpose3]);
-    let landsize = lpose.nrows();
-    println!("size:{}", landsize);
-    (lpose, landsize)
+        file::pose_write(
+            agent.time,
+            agent.nuo,
+            agent.omegao,
+            &agent.pose,
+            &agent.zres,
+            &agent.zlist,
+        );
+    }
+    /* slam */
+    let (hat_xs, zlist, land) = slamagent::slam(file::KFPATH);
+
+    file::slam_write(hat_xs, zlist, land);
+
+    /* plot */
+    plot::plot_kf(file::KFPATH, &lpose);
+    plot::plot_slam(file::SLAMPATH, &land);
 }

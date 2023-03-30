@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
-    //     use super::*;
     use nalgebra as na;
-    use robotics::kf::agent;
-    use robotics::kf::kf;
+    use robotics;
+    use robotics::common::landmark;
+    use robotics::kf::kfagent;
+    use robotics::kf::kfilter;
     use std::f32::consts::PI;
 
     #[test]
@@ -12,43 +13,32 @@ mod tests {
         let ans = na::Vector3::new(0., 0., 2. * PI);
 
         /* input condition */
-        let nu = 0.2;
-        let omega = 2. * PI * 10. / 360.;
+        let (nu, omega) = (0.2, 2. * PI * 10. / 360.);
         let time = 1.;
-        let lpose = dec_landmark();
+        let (lpose, landsize) = landmark::dec_landmark();
         let loop_num = 36;
+        let mut pose = na::Vector3::zeros();
 
         /* initial */
-        let mut pose = na::Vector3::zeros(); /* センサ初期値の算出が必要 */
         let mut out = na::Vector3::zeros();
 
         /* create object */
-        let mut agent = agent::Agent::new(&pose, lpose.1);
+        let mut agent = kfagent::Agent::new(&pose, landsize);
 
         /* main loop */
         for _i in 0..loop_num {
             /* update robot position */
-            pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
+            pose = kfilter::KFilterPose::state_transition(nu, omega, time, &pose);
 
             /* kalman filter */
-            out = agent.pose_estimate(nu, omega, &lpose.0, time, &pose);
+            agent.pose_estimate(nu, omega, &lpose, time, &pose);
+            out = agent.pose;
         }
 
         /* validate */
         let res = validate(&ans, &out);
         /* test */
         assert!(res, "\nans:{}  out:{}", &ans, &out);
-    }
-
-    /* config landmark */
-    fn dec_landmark() -> (na::Matrix3<f32>, usize) {
-        let lpose1: na::RowVector3<f32> = na::RowVector3::new(-4., 2., 0.);
-        let lpose2: na::RowVector3<f32> = na::RowVector3::new(2., -3., 0.);
-        let lpose3: na::RowVector3<f32> = na::RowVector3::new(3., 3., 0.);
-        let lpose: na::Matrix3<f32> = na::Matrix3::from_rows(&[lpose1, lpose2, lpose3]);
-        let landsize = lpose.nrows();
-        println!("size:{}", landsize);
-        (lpose, landsize)
     }
 
     /* validate */
