@@ -10,12 +10,10 @@ pub struct MapEdge {
 }
 
 impl MapEdge {
-    pub fn new(t: usize, z: (f32, f32, f32, f32), xs_vec: &Vec<(f32, f32, f32)>) -> Self {
-        let x = na::Vector3::new(xs_vec[t].0, xs_vec[t].1, xs_vec[t].2);
-
+    pub fn new() -> Self {
         Self {
-            x,
-            z,
+            x: Default::default(),
+            z: Default::default(),
             m: Default::default(),
             omega: Default::default(),
             xi: Default::default(),
@@ -24,27 +22,31 @@ impl MapEdge {
 
     pub fn land_matrix(
         &mut self,
-        head_t_f32: f32,
+        t: usize,
+        z: (f32, f32, f32, f32),
+        head_t: usize,
         head_z: (f32, f32, f32, f32),
-        xs: &Vec<(f32, f32, f32)>,
+        xs_vec: &Vec<(f32, f32, f32)>,
     ) {
         let sensor_noise_rate = [0.14, 0.05, 0.05];
-        let head_t = head_t_f32 as usize;
-        let test = na::Vector3::new(
+        self.x = na::Vector3::new(xs_vec[t].0, xs_vec[t].1, xs_vec[t].2);
+        self.z = z;
+        
+        let array = na::Vector3::new(
             self.z.1 * (self.x[2] + self.z.2).cos(),
             self.z.1 * (self.x[2] + self.z.2).sin(),
-            -xs[head_t].2 + self.z.2 - head_z.2 - self.z.3 + head_z.3,
+            -xs_vec[head_t].2 + self.z.2 - head_z.2 - self.z.3 + head_z.3,
         );
-        self.m = self.x + test;
+        self.m = self.x + array;
 
-        while self.m[2] > PI {
+        while self.m[2] >= PI {
             self.m[2] -= 2. * PI;
         }
         while self.m[2] < -PI {
             self.m[2] += 2. * PI;
         }
 
-        let q1_diag = na::Matrix3x1::new(
+        let q1_diag = na::Vector3::new(
             (self.z.1 * sensor_noise_rate[0]).powi(2),
             sensor_noise_rate[1].powi(2),
             sensor_noise_rate[2].powi(2),

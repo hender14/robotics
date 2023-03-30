@@ -15,7 +15,7 @@ pub fn slam(
     let (mut hat_xs, zlist, us) = file::pose_read(path);
     let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
     let xdim = hat_xs.len() * 3;
-    for _n in 0..1 {
+    for _n in 0..3 {
         let mut count = 0;
 
         for row in &zlist {
@@ -64,19 +64,22 @@ pub fn slam(
         }
     }
 
-    let mut omega = na::Matrix3::<f32>::zeros();
-    let mut xi = na::Vector3::<f32>::zeros();
     let mut land: [[f32; 3]; 6] = Default::default();
     for id in 0..land_klist.len() {
-        let mut edge = MapEdge::new(land_klist[id][0].0 as usize, land_klist[id][1].1, &hat_xs);
+        let mut omega = na::Matrix3::<f32>::zeros();
+        let mut xi = na::Vector3::<f32>::zeros();
         let head_t = land_klist[id][0].0;
         let head_z = land_klist[id][0].1;
-        for _i in 0..land_klist[id].len() {
-            edge.land_matrix(head_t, head_z, &hat_xs);
+        for i in 0..land_klist[id].len() {
+            let mut edge = MapEdge::new();
+            let t = land_klist[id][i].0;
+            let z = land_klist[id][i].1;
+            edge.land_matrix(t as usize, z, head_t as usize, head_z, &hat_xs);
             omega += edge.omega;
             xi += edge.xi;
         }
         land[id] = ((omega.try_inverse().unwrap()) * xi).into();
+        println!("land:{:?}", land[id]);
     }
     (hat_xs, zlist, land)
 }

@@ -112,7 +112,7 @@ pub fn slam_write(
             writeln!(
                 writer,
                 "2 {} {} {} {} {}",
-                i, zlist[i][j].1, zlist[i][j].1, zlist[i][j].1, zlist[i][j].1,
+                i, zlist[i][j].0, zlist[i][j].1, zlist[i][j].2, zlist[i][j].3,
             )
             .expect("err write");
         }
