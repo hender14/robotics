@@ -3,9 +3,12 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
-const FILEPATH: &str = "out/output.txt";
+pub const KFPATH: &str = "out/output.txt";
+pub const SLAMPATH: &str = "out/slamout.txt";
 
-pub fn pose_read() -> (
+pub fn pose_read(
+    path: &str,
+) -> (
     Vec<(f32, f32, f32)>,
     Vec<Vec<(f32, f32, f32, f32)>>,
     Vec<(f32, f32)>,
@@ -13,7 +16,7 @@ pub fn pose_read() -> (
     let mut hat_xs: Vec<(f32, f32, f32)> = vec![];
     let mut zlist: Vec<Vec<(f32, f32, f32, f32)>> = vec![vec![]];
     let mut us: Vec<(f32, f32)> = vec![];
-    let file = File::open(&FILEPATH).expect("Failed to open file");
+    let file = File::open(path).expect("Failed to open file");
     let reader = BufReader::new(file);
     for line in reader.lines() {
         let line = line.unwrap();
@@ -45,7 +48,8 @@ pub fn pose_read() -> (
 }
 
 pub fn write_init() {
-    File::create(&FILEPATH).expect("can not create file");
+    File::create(&KFPATH).expect("can not create file");
+    File::create(&SLAMPATH).expect("can not create file");
 }
 
 pub fn pose_write(
@@ -59,7 +63,7 @@ pub fn pose_write(
     let file = OpenOptions::new()
         .write(true)
         .append(true)
-        .open(&FILEPATH)
+        .open(&KFPATH)
         .expect("can not open file");
     let mut writer = BufWriter::new(file);
 
@@ -72,6 +76,43 @@ pub fn pose_write(
                 writer,
                 "2 {} {} {} {} {}",
                 time, i, zlist[i][0], zlist[i][1], zlist[i][2]
+            )
+            .expect("err write");
+        }
+    }
+}
+
+pub fn slam_write(
+    time: f32,
+    hat_xs: Vec<(f32, f32, f32)>,
+    zlist: Vec<Vec<(f32, f32, f32, f32)>>,
+    land: [[f32; 3]; 6],
+) {
+    let file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(&SLAMPATH)
+        .expect("can not open file");
+    let mut writer = BufWriter::new(file);
+
+    // 変数をファイルに書き込む
+    for i in 0..hat_xs.len() {
+        writeln!(
+            writer,
+            "1 {} {} {} {}",
+            i, hat_xs[i].0, hat_xs[i].1, hat_xs[i].2
+        )
+        .expect("err write");
+    }
+    for i in 0..land.len() {
+        writeln!(writer, "0 {} {} {}", i, land[i][0], land[i][1]).expect("err write");
+    }
+    for i in 0..zlist.len() {
+        for j in 0..zlist[i].len() {
+            writeln!(
+                writer,
+                "2 {} {} {} {} {}",
+                i, zlist[i][j].1, zlist[i][j].1, zlist[i][j].1, zlist[i][j].1,
             )
             .expect("err write");
         }

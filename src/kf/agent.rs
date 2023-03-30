@@ -37,7 +37,7 @@ impl<'a> Agent<'a> {
         &mut self,
         nu: f32,
         omega: f32,
-        lpose: &na::Matrix6x3<f32>,
+        lpose: &[[f32; 3]; 6],
         time: f32,
         pose: &na::Vector3<f32>,
     ) {
@@ -52,9 +52,8 @@ impl<'a> Agent<'a> {
         /* Process by landmark */
         for i in 0..self.landsize {
             /* calculate landmark */
-            let index: [usize; 3] = [i, self.landsize + i, self.landsize * 2 + i];
-            let lpose_row: na::Vector3<f32> =
-                na::Vector3::new(lpose[index[0]], lpose[index[1]], lpose[index[2]]);
+            let array = lpose[i];
+            let lpose_row = na::Vector3::from(array);
 
             /* calculate landmark distance/direct */
             let mut obj_dis = self.sensor.observation_predict(pose, &lpose_row);

@@ -38,8 +38,11 @@ fn main() {
         );
     }
     /* slam */
-    slam::slam();
+    let (hat_xs, zlist, land) = slam::slam(file::KFPATH);
+
+    file::slam_write(agent.time, hat_xs, zlist, land);
 
     /* plot */
-    plot::plot_control();
+    plot::plot_kf(file::KFPATH, &lpose);
+    plot::plot_slam(file::SLAMPATH, &land);
 }

@@ -1,24 +1,31 @@
 use super::super::common::file;
 use super::super::kf::kf;
+use super::map::MapEdge;
 use itertools::Itertools;
 use nalgebra as na;
 use std::f32::consts::PI;
 
-pub fn slam() {
-    for _n in 0..10 {
+pub fn slam(
+    path: &str,
+) -> (
+    Vec<(f32, f32, f32)>,
+    Vec<Vec<(f32, f32, f32, f32)>>,
+    [[f32; 3]; 6],
+) {
+    let (mut hat_xs, zlist, us) = file::pose_read(path);
+    let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
+    let xdim = hat_xs.len() * 3;
+    for _n in 0..1 {
         let mut count = 0;
-        let (hat_xs, zlist, us) = file::pose_read();
-        let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
 
-        for row in zlist {
+        for row in &zlist {
             for z in row {
                 let l_id = z.0 as usize;
-                land_klist[l_id].push((count as f32, z));
+                land_klist[l_id].push((count as f32, *z));
             }
             count += 1;
         }
 
-        let xdim = hat_xs.len() * 3;
         let mut omega = na::DMatrix::<f32>::zeros(xdim, xdim);
         for i in 0..3 {
             omega[(i, i)] = 1000000.;
@@ -43,9 +50,9 @@ pub fn slam() {
 
         let delta_xs = (omega.try_inverse().unwrap()) * xi;
         for i in 0..hat_xs.len() {
-            let _x = hat_xs[i].0 + delta_xs[i * 3];
-            let _y = hat_xs[i].1 + delta_xs[i * 3 + 1];
-            let _theta = hat_xs[i].2 + delta_xs[i * 3 + 2];
+            hat_xs[i].0 += delta_xs[i * 3];
+            hat_xs[i].1 += delta_xs[i * 3 + 1];
+            hat_xs[i].2 += delta_xs[i * 3 + 2];
             // println!("x:{}, y:{}, theta:{}", x, y, theta);
         }
 
@@ -56,6 +63,22 @@ pub fn slam() {
             break;
         }
     }
+
+    let mut omega = na::Matrix3::<f32>::zeros();
+    let mut xi = na::Vector3::<f32>::zeros();
+    let mut land: [[f32; 3]; 6] = Default::default();
+    for id in 0..land_klist.len() {
+        let mut edge = MapEdge::new(land_klist[id][0].0 as usize, land_klist[id][1].1, &hat_xs);
+        let head_t = land_klist[id][0].0;
+        let head_z = land_klist[id][0].1;
+        for _i in 0..land_klist[id].len() {
+            edge.land_matrix(head_t, head_z, &hat_xs);
+            omega += edge.omega;
+            xi += edge.xi;
+        }
+        land[id] = ((omega.try_inverse().unwrap()) * xi).into();
+    }
+    (hat_xs, zlist, land)
 }
 
 pub struct MotionEdge {
