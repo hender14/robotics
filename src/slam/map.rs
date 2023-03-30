@@ -31,7 +31,7 @@ impl MapEdge {
         let sensor_noise_rate = [0.14, 0.05, 0.05];
         self.x = na::Vector3::new(xs_vec[t].0, xs_vec[t].1, xs_vec[t].2);
         self.z = z;
-        
+
         let array = na::Vector3::new(
             self.z.1 * (self.x[2] + self.z.2).cos(),
             self.z.1 * (self.x[2] + self.z.2).sin(),

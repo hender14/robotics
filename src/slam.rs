@@ -1,2 +1,4 @@
 pub mod map;
-pub mod slam;
+pub mod motion;
+pub mod sensor;
+pub mod slamagent;

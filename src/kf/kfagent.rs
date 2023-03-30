@@ -1,11 +1,11 @@
-use super::kf;
+use super::kfilter;
 use super::sensor;
 use nalgebra as na;
 use std::f32::consts::PI;
 
 pub struct Agent<'a> {
     sensor: sensor::Sensor,
-    kf: kf::KFilterPose<'a>,
+    kf: kfilter::KFilterPose<'a>,
     pub pose: na::Vector3<f32>,
     pub nuo: f32,
     pub omegao: f32,
@@ -19,7 +19,7 @@ impl<'a> Agent<'a> {
     pub fn new(initial_pose: &na::Vector3<f32>, size: usize) -> Self {
         let init_cov: f32 = 1e-10;
         let sensor = sensor::Sensor::new();
-        let kf = kf::KFilterPose::new(initial_pose, init_cov);
+        let kf = kfilter::KFilterPose::new(initial_pose, init_cov);
         Self {
             sensor,
             kf,

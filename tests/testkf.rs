@@ -3,8 +3,8 @@ mod tests {
     use nalgebra as na;
     use robotics;
     use robotics::common::landmark;
-    use robotics::kf::agent;
-    use robotics::kf::kf;
+    use robotics::kf::kfagent;
+    use robotics::kf::kfilter;
     use std::f32::consts::PI;
 
     #[test]
@@ -23,12 +23,12 @@ mod tests {
         let mut out = na::Vector3::zeros();
 
         /* create object */
-        let mut agent = agent::Agent::new(&pose, landsize);
+        let mut agent = kfagent::Agent::new(&pose, landsize);
 
         /* main loop */
         for _i in 0..loop_num {
             /* update robot position */
-            pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
+            pose = kfilter::KFilterPose::state_transition(nu, omega, time, &pose);
 
             /* kalman filter */
             agent.pose_estimate(nu, omega, &lpose, time, &pose);

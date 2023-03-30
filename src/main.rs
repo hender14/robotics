@@ -1,9 +1,9 @@
 use robotics::common::file;
 use robotics::common::landmark;
 use robotics::debug::plot;
-use robotics::kf::agent;
-use robotics::kf::kf;
-use robotics::slam::slam;
+use robotics::kf::kfagent;
+use robotics::kf::kfilter;
+use robotics::slam::slamagent;
 
 use nalgebra as na;
 use std::f32::consts::PI;
@@ -18,12 +18,12 @@ fn main() {
     file::write_init();
 
     /* create object */
-    let mut agent = agent::Agent::new(&pose, landsize);
+    let mut agent = kfagent::Agent::new(&pose, landsize);
 
     /* main loop */
     for _i in 0..loop_num {
         /* update robot position */
-        pose = kf::KFilterPose::state_transition(nu, omega, time, &pose);
+        pose = kfilter::KFilterPose::state_transition(nu, omega, time, &pose);
 
         /* kalman filter */
         agent.pose_estimate(nu, omega, &lpose, time, &pose);
@@ -38,9 +38,9 @@ fn main() {
         );
     }
     /* slam */
-    let (hat_xs, zlist, land) = slam::slam(file::KFPATH);
+    let (hat_xs, zlist, land) = slamagent::slam(file::KFPATH);
 
-    file::slam_write(agent.time, hat_xs, zlist, land);
+    file::slam_write(hat_xs, zlist, land);
 
     /* plot */
     plot::plot_kf(file::KFPATH, &lpose);

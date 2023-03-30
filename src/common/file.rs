@@ -83,7 +83,6 @@ pub fn pose_write(
 }
 
 pub fn slam_write(
-    time: f32,
     hat_xs: Vec<(f32, f32, f32)>,
     zlist: Vec<Vec<(f32, f32, f32, f32)>>,
     land: [[f32; 3]; 6],
