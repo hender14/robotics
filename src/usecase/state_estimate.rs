@@ -26,7 +26,7 @@ pub fn state_estimate(
     /* create object */
     let mut kf = kf::KFilterPose::new(&pose, init_cov);
 
-    /* main loop */
+    // /* main loop */
     for _i in 0..config::LOOP_NUM {
         /* 初期化 */
         zlist = [[0.; 3]; 6];
@@ -47,14 +47,14 @@ pub fn state_estimate(
         /* calculate kfiltered pose*/
         kf_pose = kf.kf_update(&obj_dis, &lpose, landsize);
 
-        /* update old value */
+        // /* update old value */
         time += delta;
-        /* nu, omegaの更新は? */
+        // /* nu, omegaの更新は? */
         (nuo, omegao) = (nu, omega);
-        // pose = pose;
-        // zlist = zlist;
+        // // pose = pose;
+        // // zlist = zlist;
 
-        /* file */
+        // /* file */
         file::pose_write(time, nu, omega, &kf_pose, &zres, &zlist);
     }
     (time, nu, omega, kf_pose, zres, zlist)

@@ -1,8 +1,11 @@
 use nalgebra as na;
+use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::Path;
 
+pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
 pub const SLAMPATH: &str = "out/slamout.txt";
 
@@ -47,7 +50,14 @@ pub fn pose_read(
     (hat_xs, zlist, us)
 }
 
-pub fn write_init() {
+pub fn directry_init() {
+    let dir_path = DIRECTRY;
+    let path = Path::new(dir_path);
+    if !path.exists() {
+        fs::create_dir_all(path).unwrap();
+    }
+}
+pub fn file_init() {
     File::create(&KFPATH).expect("can not create file");
     File::create(&SLAMPATH).expect("can not create file");
 }

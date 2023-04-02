@@ -13,7 +13,8 @@ pub const INIT_POSE: na::Vector3<f32> = na::Vector3::new(0., 0., 0.);
 pub const INIT_COV: f32 = 1e-10;
 
 pub fn init() -> ([[f32; 3]; 6], usize) {
-    file::write_init();
+    file::directry_init();
+    file::file_init();
     let (lpose, landsize) = dec_landmark();
     (lpose, landsize)
 }

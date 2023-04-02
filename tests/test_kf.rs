@@ -37,6 +37,7 @@ mod tests {
         for i in 0..(len - 1) {
             if (ans[i] - out[i]).abs() > 0.1 {
                 flag = false;
+                break;
             }
         }
         flag
