@@ -3,7 +3,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
-pub const KFPATH: &str = "out/output.txt";
+pub const KFPATH: &str = "out/kfoutput.txt";
 pub const SLAMPATH: &str = "out/slamout.txt";
 
 pub fn pose_read(

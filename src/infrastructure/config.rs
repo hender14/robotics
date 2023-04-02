@@ -12,16 +12,10 @@ pub const INIT_POSE: na::Vector3<f32> = na::Vector3::new(0., 0., 0.);
 
 pub const INIT_COV: f32 = 1e-10;
 
-// pub const DISTANCE_BIAS_RATE_STD: 0.1,
-// pub const direction_bias: 2. * PI * 2. / 360.,
-// pub const distance_noise_rate: 0.1,
-// pub const direction_noise: 2. * PI * 2. / 360.,
-// pub const distance_range: [0.5, 6.],
-// direction_range: [-(PI / 3.), PI / 3.],
-
-pub fn init() {
+pub fn init() -> ([[f32; 3]; 6], usize) {
     file::write_init();
     let (lpose, landsize) = dec_landmark();
+    (lpose, landsize)
 }
 
 /* config landmark */

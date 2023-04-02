@@ -50,8 +50,7 @@ impl<'a> KFilterPose<'a> {
         /* Process by landmark */
         for i in 0..landsize {
             /* calculate landmark */
-            let array = lpose[i];
-            let lpose_row = na::Vector3::from(array);
+            let lpose_row = na::Vector3::from(lpose[i]);
 
             let h = ut::mat_h(&self.belief.mean, &lpose_row);
             let estimated_z = ut::polar_trans(&self.belief.mean, &lpose_row);

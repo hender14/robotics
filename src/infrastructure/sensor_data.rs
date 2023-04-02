@@ -18,12 +18,10 @@ pub fn sensor_receive(
     /* Process by landmark */
     for i in 0..landsize {
         /* calculate landmark */
-        let array = lpose[i];
-        let lpose_row = na::Vector3::from(array);
-
+        let lpose_row = na::Vector3::from(lpose[i]);
         let mut polar_landi = ut::polar_trans(pose, &lpose_row);
-        let obj = ut::psi_predict(&pose, &lpose_row);
-        zlist[i] = [polar_landi[0], polar_landi[1], obj];
+        let psi = ut::psi_predict(&pose, &lpose_row);
+        zlist[i] = [polar_landi[0], polar_landi[1], psi];
         /* refrect noize etc */
         zres[i] = sensor.visible(&polar_landi);
         polar_landi = sensor.exter_dist(polar_landi);

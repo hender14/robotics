@@ -2,9 +2,8 @@
 mod tests {
     use nalgebra as na;
     use robotics;
-    use robotics::common::landmark;
-    use robotics::kf::kfagent;
-    use robotics::kf::kfilter;
+    use robotics::infrastructure::config;
+    use robotics::usecase::state_estimate as estimate;
     use std::f32::consts::PI;
 
     #[test]
@@ -14,26 +13,16 @@ mod tests {
 
         /* input condition */
         let (nu, omega) = (0.2, 2. * PI * 10. / 360.);
-        let time = 1.;
-        let (lpose, landsize) = landmark::dec_landmark();
-        let loop_num = 36;
-        let mut pose = na::Vector3::zeros();
+        let delta = 1.;
+        let (lpose, landsize) = config::dec_landmark();
+        // let loop_num = 36;
+        let pose = na::Vector3::zeros();
 
         /* initial */
-        let mut out = na::Vector3::zeros();
+        // let out = na::Vector3::<f32>::zeros();
 
-        /* create object */
-        let mut agent = kfagent::Agent::new(&pose, landsize);
-
-        /* main loop */
-        for _i in 0..loop_num {
-            /* update robot position */
-            pose = kfilter::KFilterPose::state_transition(nu, omega, time, &pose);
-
-            /* kalman filter */
-            agent.pose_estimate(nu, omega, &lpose, time, &pose);
-            out = agent.pose;
-        }
+        let (_, _, _, out, _, _) =
+            estimate::state_estimate(nu, omega, delta, pose, lpose, landsize);
 
         /* validate */
         let res = validate(&ans, &out);

@@ -1,6 +1,7 @@
 use robotics::common::file;
 use robotics::common::landmark;
 use robotics::debug::plot;
+use robotics::infrastructure::app;
 use robotics::kf::kfagent;
 use robotics::kf::kfilter;
 use robotics::slam::slamagent;
@@ -43,6 +44,8 @@ fn main() {
     file::slam_write(hat_xs, zlist, land);
 
     /* plot */
-    plot::plot_kf(file::KFPATH, &lpose);
-    plot::plot_slam(file::SLAMPATH, &land);
+    // plot::plot_kf(file::KFPATH, &lpose);
+    // plot::plot_slam(file::SLAMPATH, &land);
+
+    app::start_app();
 }

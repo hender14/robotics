@@ -1,6 +1,6 @@
+use nalgebra as na;
 use rand::prelude::{thread_rng, Distribution};
 use rand_distr::Normal;
-use nalgebra as na;
 use std::f32::consts::PI;
 
 pub struct Sensor {

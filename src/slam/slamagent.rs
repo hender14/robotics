@@ -15,7 +15,7 @@ pub fn slam(
     let (mut hat_xs, zlist, us) = file::pose_read(path);
     let mut land_klist: [Vec<(f32, (f32, f32, f32, f32))>; 6] = Default::default();
     let xdim = hat_xs.len() * 3;
-    for _n in 0..10 {
+    for _n in 0..1 {
         let mut count = 0;
 
         for row in &zlist {

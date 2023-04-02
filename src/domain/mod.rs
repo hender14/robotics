@@ -4,5 +4,6 @@ pub mod kalman_filter;
 pub mod localize;
 pub mod map;
 pub mod sensor_data;
+pub mod solver;
 pub mod state;
 pub mod utils;
