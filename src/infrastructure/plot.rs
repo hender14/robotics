@@ -2,7 +2,7 @@ use super::file;
 use plotters::{coord::types::RangedCoordf64, prelude::*};
 
 pub fn plot_kf(path: &str, landmark: &[[f32; 3]; 6]) {
-    let root = BitMapBackend::new("out/plot.png", (640, 480)).into_drawing_area();
+    let root = BitMapBackend::new("out/kfplot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
     let mut chart = ChartBuilder::on(&root)
