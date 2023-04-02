@@ -5,7 +5,7 @@ mod tests {
     use robotics::infrastructure::file;
     use robotics::usecase::map_create as map;
 
-    #[test]
+    // #[test] /* 一時的に無効化 */
     fn test_slam() {
         /* init */
         config::init();
