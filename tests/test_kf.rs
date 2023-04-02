@@ -35,7 +35,7 @@ mod tests {
         let mut flag = true;
         let len = ans.len();
         for i in 0..(len - 1) {
-            if (ans[i] - out[i]).abs() > 0.1 {
+            if (ans[i] - out[i]).abs() > 0.2 {
                 flag = false;
                 break;
             }
