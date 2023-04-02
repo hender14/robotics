@@ -1,8 +1,5 @@
-// use rand::Rng;
 use rand::prelude::{thread_rng, Distribution};
-// use rand::distributions::Normal;
 use rand_distr::Normal;
-// use rand_distr::{Normal, Distribution};
 use nalgebra as na;
 use std::f32::consts::PI;
 
