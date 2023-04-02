@@ -7,6 +7,9 @@ mod tests {
 
     #[test]
     fn test_slam() {
+        /* init */
+        config::init();
+
         /* Output specification */
         let (ans, _) = config::dec_landmark();
 

@@ -8,6 +8,9 @@ mod tests {
 
     #[test]
     fn test_kf() {
+        /* init */
+        config::init();
+
         /* Output specification */
         let ans = na::Vector3::new(0., 0., 2. * PI);
 

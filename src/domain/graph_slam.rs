@@ -32,8 +32,7 @@ pub fn graph_slam(
             }
         }
     }
-    // println!("omega:{}, xi:{}", omega, xi);
-
+    
     let delta_xs = (omega.try_inverse().unwrap()) * xi;
     (delta_xs, land_klist.clone())
 }
