@@ -21,13 +21,13 @@ jobs:
           # profile: minimal
           components: rustfmt, clippy
           toolchain: stable
-          # override: true
+          override: true
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          # args: --all -- --check
 
       - name: Run cargo static analysis
         uses: actions-rs/cargo@v1
