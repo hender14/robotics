@@ -1,4 +1,5 @@
-use super::super::domain::utils as ut;
+use crate::domain::sensor_data::Landmark;
+use crate::domain::utils as ut;
 use std::f32::consts::PI;
 
 use nalgebra as na;
@@ -7,8 +8,7 @@ use rand_distr::Normal;
 
 pub fn sensor_receive(
     pose: &na::Vector3<f32>,
-    lpose: &[[f32; 3]; 6],
-    landsize: usize,
+    landmarks: &[Landmark; 6],
 ) -> (na::Matrix2x6<f32>, [[f32; 3]; 6], [bool; 6]) {
     let mut polar_land: na::Matrix2x6<f32> = na::Matrix2x6::zeros();
     let mut zlist: [[f32; 3]; 6] = [[0.0; 3]; 6];
@@ -16,16 +16,15 @@ pub fn sensor_receive(
     let sensor = Sensor::new();
 
     /* Process by landmark */
-    for i in 0..landsize {
+    for landmark in landmarks {
         /* calculate landmark */
-        let lpose_row = na::Vector3::from(lpose[i]);
-        let mut polar_landi = ut::polar_trans(pose, &lpose_row);
-        let psi = ut::psi_predict(&pose, &lpose_row);
-        zlist[i] = [polar_landi[0], polar_landi[1], psi];
+        let mut polar_landi = ut::polar_trans(pose, &landmark.pose);
+        let psi = ut::psi_predict(&pose, &landmark.pose);
+        zlist[landmark.id] = [polar_landi[0], polar_landi[1], psi];
         /* refrect noize etc */
-        zres[i] = sensor.visible(&polar_landi);
+        zres[landmark.id] = sensor.visible(&polar_landi);
         polar_landi = sensor.exter_dist(polar_landi);
-        polar_land.column_mut(i).copy_from(&polar_landi);
+        polar_land.column_mut(landmark.id).copy_from(&polar_landi);
     }
     (polar_land, zlist, zres)
 }

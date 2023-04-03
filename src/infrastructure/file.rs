@@ -5,6 +5,8 @@ use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
+use crate::domain::sensor_data::Landmark;
+
 pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
 pub const SLAMPATH: &str = "out/slamout.txt";
@@ -50,6 +52,7 @@ pub fn pose_read(
     (hat_xs, zlist, us)
 }
 
+/* confirm directry */
 pub fn directry_init() {
     let dir_path = DIRECTRY;
     let path = Path::new(dir_path);
@@ -57,6 +60,8 @@ pub fn directry_init() {
         fs::create_dir_all(path).unwrap();
     }
 }
+
+/* create file */
 pub fn file_init() {
     File::create(&KFPATH).expect("can not create file");
     File::create(&SLAMPATH).expect("can not create file");
@@ -95,7 +100,7 @@ pub fn pose_write(
 pub fn slam_write(
     hat_xs: Vec<(f32, f32, f32)>,
     zlist: Vec<Vec<(f32, f32, f32, f32)>>,
-    land: [[f32; 3]; 6],
+    landmarks: &[Landmark; 6],
 ) {
     let file = OpenOptions::new()
         .write(true)
@@ -113,8 +118,13 @@ pub fn slam_write(
         )
         .expect("err write");
     }
-    for i in 0..land.len() {
-        writeln!(writer, "0 {} {} {}", i, land[i][0], land[i][1]).expect("err write");
+    for landmark in landmarks {
+        writeln!(
+            writer,
+            "0 {} {} {}",
+            landmark.id, landmark.pose[0], landmark.pose[1]
+        )
+        .expect("err write");
     }
     for i in 0..zlist.len() {
         for j in 0..zlist[i].len() {

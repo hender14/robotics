@@ -1,7 +1,9 @@
+use crate::domain::sensor_data::Landmark;
+
 use super::file;
 use plotters::{coord::types::RangedCoordf64, prelude::*};
 
-pub fn plot_kf(path: &str, landmark: &[[f32; 3]; 6]) {
+pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
     let root = BitMapBackend::new("out/kfplot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
@@ -17,11 +19,11 @@ pub fn plot_kf(path: &str, landmark: &[[f32; 3]; 6]) {
     let (hat_xs, zlist, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
-    plot_land(&mut chart, landmark);
+    plot_landmark(&mut chart, &landmarks);
     plot_edge(&mut chart, &hat_xs, &zlist);
 }
 
-pub fn plot_slam(path: &str, landmark: &[[f32; 3]; 6]) {
+pub fn plot_slam(path: &str, landmarks: &[Landmark; 6]) {
     let root = BitMapBackend::new("out/slamplot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
@@ -37,7 +39,7 @@ pub fn plot_slam(path: &str, landmark: &[[f32; 3]; 6]) {
     let (hat_xs, zlist, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
-    plot_land(&mut chart, landmark);
+    plot_landmark(&mut chart, &landmarks);
     plot_edge(&mut chart, &hat_xs, &zlist);
 }
 
@@ -55,14 +57,18 @@ pub fn plot_pose(
     chart.draw_series(line_series).unwrap();
 }
 
-pub fn plot_land(
+pub fn plot_landmark(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    array: &[[f32; 3]; 6],
+    array: &[Landmark; 6],
 ) {
     // let (array, _) = landmark::dec_landmark();
-    let point_series = array
-        .iter()
-        .map(|&[x, y, _]| Circle::new((x as f64, y as f64), 5, ShapeStyle::from(&BLACK).filled()));
+    let point_series = array.iter().map(|landmark| {
+        Circle::new(
+            (landmark.pose.x as f64, landmark.pose.y as f64),
+            5,
+            ShapeStyle::from(&BLACK).filled(),
+        )
+    });
 
     chart.draw_series(point_series).unwrap();
 }

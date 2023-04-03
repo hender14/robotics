@@ -17,15 +17,14 @@ mod tests {
         /* input condition */
         let (nu, omega) = (0.2, 2. * PI * 10. / 360.);
         let delta = 1.;
-        let (lpose, landsize) = config::dec_landmark();
+        let landmarks = config::get_landmark();
         // let loop_num = 36;
         let pose = na::Vector3::zeros();
 
         /* initial */
         // let out = na::Vector3::<f32>::zeros();
 
-        let (_, _, _, out, _, _) =
-            estimate::state_estimate(nu, omega, delta, pose, lpose, landsize);
+        let (_, _, _, out, _, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
 
         /* validate */
         let res = validate(&ans, &out);

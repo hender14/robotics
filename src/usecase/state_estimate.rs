@@ -1,8 +1,9 @@
-use super::super::domain::kalman_filter as kf;
-use super::super::domain::localize as loc;
-use super::super::infrastructure::config;
-use super::super::infrastructure::file;
-use super::super::infrastructure::sensor_data as sd;
+use crate::domain::kalman_filter as kf;
+use crate::domain::localize as loc;
+use crate::domain::sensor_data::Landmark;
+use crate::infrastructure::config;
+use crate::infrastructure::file;
+use crate::infrastructure::sensor_data as sd;
 use nalgebra as na;
 
 pub fn state_estimate(
@@ -10,8 +11,7 @@ pub fn state_estimate(
     omega: f32,
     delta: f32,
     init_pose: na::Vector3<f32>,
-    lpose: [[f32; 3]; 6],
-    landsize: usize,
+    landmarks: &[Landmark; 6],
 ) -> (f32, f32, f32, na::Vector3<f32>, [bool; 6], [[f32; 3]; 6]) {
     /* 初期値はインフラ層で定義すべき */
     let mut pose = init_pose;
@@ -38,14 +38,14 @@ pub fn state_estimate(
         /* calculate landmark */
         /* calculate landmark distance/direct */
         /* nu, omega, timeについても構造体定義して受け取るべき */
-        (obj_dis, zlist, zres) = sd::sensor_receive(&pose, &lpose, landsize);
+        (obj_dis, zlist, zres) = sd::sensor_receive(&pose, &landmarks);
 
         /* kalman filter */
         kf.kf_predict(nuo, omegao, delta);
 
         /* predict state transition */
         /* calculate kfiltered pose*/
-        kf_pose = kf.kf_update(&obj_dis, &lpose, landsize);
+        kf_pose = kf.kf_update(&obj_dis, &landmarks);
 
         // /* update old value */
         time += delta;

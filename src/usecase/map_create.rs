@@ -2,6 +2,7 @@ use super::super::domain::map::MapEdge;
 use super::super::infrastructure::file;
 use crate::domain::constraint::constraint;
 use crate::domain::graph_slam::graph_slam;
+use crate::domain::sensor_data::{init_landmark, Landmark};
 use nalgebra as na;
 
 pub fn slam(
@@ -9,7 +10,7 @@ pub fn slam(
 ) -> (
     Vec<(f32, f32, f32)>,
     Vec<Vec<(f32, f32, f32, f32)>>,
-    [[f32; 3]; 6],
+    [Landmark; 6],
 ) {
     let (mut hat_xs, zlist, us) = file::pose_read(path);
     let mut delta_xs;
@@ -29,8 +30,8 @@ pub fn slam(
         }
     }
 
-    let mut land: [[f32; 3]; 6] = Default::default();
-    for id in 0..land_klist.len() {
+    let mut landmarks: [Landmark; 6] = init_landmark();
+    for id in 0..6 {
         let mut omega = na::Matrix3::<f32>::zeros();
         let mut xi = na::Vector3::<f32>::zeros();
         let head_t = land_klist[id][0].0;
@@ -43,10 +44,12 @@ pub fn slam(
             omega += edge.omega;
             xi += edge.xi;
         }
-        land[id] = ((omega.try_inverse().unwrap()) * xi).into();
+        landmarks[id].id = id;
+        landmarks[id].pose = (omega.try_inverse().unwrap()) * xi;
+        // landmarks[id] = ((omega.try_inverse().unwrap()) * xi).into();
     }
 
-    file::slam_write(hat_xs.clone(), zlist.clone(), land);
+    file::slam_write(hat_xs.clone(), zlist.clone(), &landmarks);
 
-    (hat_xs, zlist, land)
+    (hat_xs, zlist, landmarks)
 }

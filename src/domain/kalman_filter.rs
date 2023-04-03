@@ -1,4 +1,4 @@
-use super::utils as ut;
+use super::{sensor_data::Landmark, utils as ut};
 use nalgebra as na;
 
 struct Belief {
@@ -44,17 +44,16 @@ impl<'a> KFilterPose<'a> {
     pub fn kf_update(
         &mut self,
         obj_dis: &na::Matrix2x6<f32>,
-        lpose: &[[f32; 3]; 6],
-        landsize: usize,
+        landmarks: &[Landmark; 6],
     ) -> na::Vector3<f32> {
         /* Process by landmark */
-        for i in 0..landsize {
+        for landmark in landmarks {
             /* calculate landmark */
-            let lpose_row = na::Vector3::from(lpose[i]);
+            // let lpose_row = na::Vector3::from(landmarks[i]);
 
-            let h = ut::mat_h(&self.belief.mean, &lpose_row);
-            let estimated_z = ut::polar_trans(&self.belief.mean, &lpose_row);
-            let z = obj_dis.column(i);
+            let h = ut::mat_h(&self.belief.mean, &landmark.pose);
+            let estimated_z = ut::polar_trans(&self.belief.mean, &landmark.pose);
+            let z = obj_dis.column(landmark.id);
             let q = ut::mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
             let kalman_gain = self.belief.cov
                 * (h.transpose())
