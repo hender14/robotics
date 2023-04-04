@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
 use crate::domain::sensor_data::Landmark;
+use crate::domain::sensor_data::SensorData;
 
 pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
@@ -72,8 +73,7 @@ pub fn pose_write(
     nu: f32,
     omega: f32,
     pose: &na::Vector3<f32>,
-    zres: &[bool; 6],
-    zlist: &[[f32; 3]; 6],
+    sensor_data: &Vec<SensorData>,
 ) {
     let file = OpenOptions::new()
         .write(true)
@@ -85,12 +85,12 @@ pub fn pose_write(
     // 変数をファイルに書き込む
     writeln!(writer, "0 {} {} {}", time, nu, omega).expect("err write");
     writeln!(writer, "1 {} {} {} {}", time, pose[0], pose[1], pose[2]).expect("err write");
-    for i in 0..zlist.len() {
-        if zres[i] {
+    for data in sensor_data {
+        if data.result {
             writeln!(
                 writer,
                 "2 {} {} {} {} {}",
-                time, i, zlist[i][0], zlist[i][1], zlist[i][2]
+                data.timestamp, data.id, data.data.polor[0], data.data.polor[1], data.data.psi,
             )
             .expect("err write");
         }

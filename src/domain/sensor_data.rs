@@ -1,24 +1,16 @@
 use nalgebra as na;
 
 pub struct LandmarkData {
-    pub distance: f64,
-    pub angle: f64,
-    pub psi: f64,
+    pub polor: na::Matrix2x1<f32>,
+    pub psi: f32,
 }
 
 pub struct SensorData {
-    pub timestamp: u64,
-    pub landmark_data: LandmarkData,
+    pub id: usize,
+    pub timestamp: usize,
+    pub result: bool,
+    pub data: LandmarkData,
 }
-
-// impl SensorData {
-//   pub fn new(timestamp: u64, range_data: Vec<f64>) -> Self {
-//       Self {
-//           timestamp,
-//           range_data,
-//       }
-//   }
-// }
 
 #[derive(Debug)]
 pub struct Landmark {

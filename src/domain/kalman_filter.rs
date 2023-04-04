@@ -1,4 +1,7 @@
-use super::{sensor_data::Landmark, utils as ut};
+use super::{
+    sensor_data::{Landmark, SensorData},
+    utils as ut,
+};
 use nalgebra as na;
 
 struct Belief {
@@ -43,25 +46,25 @@ impl<'a> KFilterPose<'a> {
 
     pub fn kf_update(
         &mut self,
-        obj_dis: &na::Matrix2x6<f32>,
+        sensor_data: &Vec<SensorData>,
         landmarks: &[Landmark; 6],
     ) -> na::Vector3<f32> {
         /* Process by landmark */
         for landmark in landmarks {
-            /* calculate landmark */
-            // let lpose_row = na::Vector3::from(landmarks[i]);
-
-            let h = ut::mat_h(&self.belief.mean, &landmark.pose);
-            let estimated_z = ut::polar_trans(&self.belief.mean, &landmark.pose);
-            let z = obj_dis.column(landmark.id);
-            let q = ut::mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
-            let kalman_gain = self.belief.cov
-                * (h.transpose())
-                * (h * self.belief.cov * h.transpose() + q)
-                    .try_inverse()
-                    .unwrap();
-            self.belief.mean += kalman_gain * (z - estimated_z);
-            self.belief.cov = (na::Matrix3::identity() - kalman_gain * h) * self.belief.cov;
+            if sensor_data[landmark.id].result {
+                /* calculate landmark */
+                let h = ut::mat_h(&self.belief.mean, &landmark.pose);
+                let estimated_z = ut::polar_trans(&self.belief.mean, &landmark.pose);
+                let z = sensor_data[landmark.id].data.polor;
+                let q = ut::mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
+                let kalman_gain = self.belief.cov
+                    * (h.transpose())
+                    * (h * self.belief.cov * h.transpose() + q)
+                        .try_inverse()
+                        .unwrap();
+                self.belief.mean += kalman_gain * (z - estimated_z);
+                self.belief.cov = (na::Matrix3::identity() - kalman_gain * h) * self.belief.cov;
+            }
         }
         self.belief.mean
     }

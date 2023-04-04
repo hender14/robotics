@@ -9,7 +9,7 @@ pub fn start_app() {
     let landmarks_kf = config::init();
 
     /* main task */
-    let (time, nu, omega, pose, zres, zlist) = estimate::state_estimate(
+    let (time, nu, omega, pose, _) = estimate::state_estimate(
         config::INIT_NU,
         config::INIT_OMEGA,
         config::TIME,

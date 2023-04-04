@@ -24,7 +24,7 @@ mod tests {
         /* initial */
         // let out = na::Vector3::<f32>::zeros();
 
-        let (_, _, _, out, _, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
+        let (_, _, _, out, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
 
         /* validate */
         let res = validate(&ans, &out);

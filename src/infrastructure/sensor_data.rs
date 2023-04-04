@@ -1,33 +1,11 @@
 use crate::domain::sensor_data::Landmark;
+use crate::domain::sensor_data::{LandmarkData, SensorData};
 use crate::domain::utils as ut;
 use std::f32::consts::PI;
 
 use nalgebra as na;
 use rand::prelude::{thread_rng, Distribution};
 use rand_distr::Normal;
-
-pub fn sensor_receive(
-    pose: &na::Vector3<f32>,
-    landmarks: &[Landmark; 6],
-) -> (na::Matrix2x6<f32>, [[f32; 3]; 6], [bool; 6]) {
-    let mut polar_land: na::Matrix2x6<f32> = na::Matrix2x6::zeros();
-    let mut zlist: [[f32; 3]; 6] = [[0.0; 3]; 6];
-    let mut zres: [bool; 6] = [false; 6];
-    let sensor = Sensor::new();
-
-    /* Process by landmark */
-    for landmark in landmarks {
-        /* calculate landmark */
-        let mut polar_landi = ut::polar_trans(pose, &landmark.pose);
-        let psi = ut::psi_predict(&pose, &landmark.pose);
-        zlist[landmark.id] = [polar_landi[0], polar_landi[1], psi];
-        /* refrect noize etc */
-        zres[landmark.id] = sensor.visible(&polar_landi);
-        polar_landi = sensor.exter_dist(polar_landi);
-        polar_land.column_mut(landmark.id).copy_from(&polar_landi);
-    }
-    (polar_land, zlist, zres)
-}
 
 pub struct Sensor {
     distance_bias_rate_std: f32,
@@ -36,22 +14,9 @@ pub struct Sensor {
     direction_noise: f32,
     distance_range: [f32; 2],
     direction_range: [f32; 2],
+    pub sensor_data: Vec<SensorData>,
+    time: usize,
 }
-
-// pub fn observation_function(
-//   pose: &na::Vector3<f32>,
-//   landmark: &na::Vector3<f32>,
-// ) -> na::Matrix2x1<f32> {
-//   let diff = landmark - pose;
-//   let mut phi = diff[1].atan2(diff[0]) - pose[2];
-//   while phi >= PI {
-//       phi -= 2. * PI;
-//   }
-//   while phi < -PI {
-//       phi += 2. * PI;
-//   }
-//   na::Matrix2x1::new(diff[0].hypot(diff[1]), phi)
-// }
 
 impl Sensor {
     pub fn new() -> Self {
@@ -62,33 +27,56 @@ impl Sensor {
             direction_noise: 2. * PI * 2. / 360.,
             distance_range: [0.5, 6.],
             direction_range: [-(PI / 3.), PI / 3.],
+            sensor_data: Self::object_init(),
+            time: 0,
         }
     }
 
-    // pub fn observation_predict(
-    //     &self,
-    //     pose: &na::Vector3<f32>,
-    //     landmark: &na::Vector3<f32>,
-    // ) -> na::Matrix2x1<f32> {
-    //     let diff = landmark - pose;
-    //     let mut phi = diff[1].atan2(diff[0]) - pose[2];
-    //     while phi >= PI {
-    //         phi -= 2. * PI;
-    //     }
-    //     while phi < -PI {
-    //         phi += 2. * PI;
-    //     }
-    //     na::Matrix2x1::new(diff[0].hypot(diff[1]), phi)
-    // }
+    fn object_init() -> Vec<SensorData> {
+        let mut sensor_data = vec![];
+        for i in 0..6 {
+            sensor_data.push(SensorData {
+                id: i,
+                timestamp: 0,
+                result: false,
+                data: LandmarkData {
+                    polor: na::Matrix2x1::new(0., 0.),
+                    psi: 0.,
+                },
+            })
+        }
 
-    // pub fn psi_predict(&self, pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> f32 {
-    //     let noise = PI / 90.;
-    //     let mut rng = thread_rng();
-    //     let diff = pose - landmark;
-    //     let normal = Normal::new((diff[1]).atan2(diff[0]), noise).unwrap();
-    //     let psi = normal.sample(&mut rng);
-    //     psi
-    // }
+        sensor_data
+    }
+
+    pub fn sensor_receive(&mut self, pose: &na::Vector3<f32>, landmarks: &[Landmark; 6]) {
+        /* find landmark */
+        self.find_landmark(landmarks, pose);
+
+        /* time increment */
+        self.time += 1;
+    }
+
+    pub fn find_landmark(&mut self, landmarks: &[Landmark; 6], pose: &na::Vector3<f32>) {
+        /* Process by landmark */
+        for landmark in landmarks {
+            /* get timestamp */
+            self.sensor_data[landmark.id].id = landmark.id;
+            self.sensor_data[landmark.id].timestamp = self.time;
+
+            /* calculate landmark */
+            let mut polar_landmark = ut::polar_trans(pose, &landmark.pose);
+            let psi = ut::psi_predict(&pose, &landmark.pose);
+
+            /* refrect noize etc */
+            self.sensor_data[landmark.id].result = self.visible(&polar_landmark);
+            polar_landmark = self.exter_dist(polar_landmark, landmark.id);
+            self.sensor_data[landmark.id].data = LandmarkData {
+                polor: polar_landmark,
+                psi,
+            };
+        }
+    }
 
     pub fn visible(&self, polarpos: &na::Matrix2x1<f32>) -> bool {
         return self.distance_range[0] <= polarpos[0]
@@ -97,9 +85,13 @@ impl Sensor {
             && polarpos[1] <= self.direction_range[1];
     }
 
-    pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
-        obj_dis = Sensor::bias(self, &obj_dis);
-        obj_dis = Sensor::noise(self, &obj_dis);
+    pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>, id: usize) -> na::Matrix2x1<f32> {
+        if self.sensor_data[id].result {
+            obj_dis = Sensor::bias(self, &obj_dis);
+            obj_dis = Sensor::noise(self, &obj_dis);
+        } else {
+            obj_dis = na::Matrix2x1::new(0.0, 0.0);
+        }
         obj_dis
     }
     fn bias(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {

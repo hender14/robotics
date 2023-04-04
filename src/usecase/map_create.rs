@@ -16,7 +16,7 @@ pub fn slam(
     let mut delta_xs;
 
     let mut land_klist = constraint(&zlist);
-    for _n in 0..10 {
+    for _n in 0..5 {
         (delta_xs, land_klist) = graph_slam(&hat_xs, &us, &land_klist);
         for i in 0..hat_xs.len() {
             hat_xs[i].0 += delta_xs[i * 3];
