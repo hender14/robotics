@@ -9,7 +9,7 @@ pub fn start_app() {
     let landmarks_kf = config::init();
 
     /* main task */
-    let (time, nu, omega, pose, _) = estimate::state_estimate(
+    let (_, _, _, _, _) = estimate::state_estimate(
         config::INIT_NU,
         config::INIT_OMEGA,
         config::TIME,
@@ -17,7 +17,7 @@ pub fn start_app() {
         &landmarks_kf,
     );
 
-    let (hat_xs, zlist, landmarks_slam) = map::slam(file::KFPATH);
+    let (_, _, landmarks_slam) = map::slam(file::KFPATH);
 
     /* plot */
     plot::plot_kf(file::KFPATH, &landmarks_kf);

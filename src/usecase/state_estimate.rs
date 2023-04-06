@@ -26,6 +26,7 @@ pub fn state_estimate<'a>(
 
     // /* main loop */
     for _i in 0..config::LOOP_NUM {
+        /* update robot position */
         pose = loc::state_transition(nu, omega, delta, &pose);
         /* receive sensor data */
         sensor.sensor_receive(&pose, &landmarks);
@@ -43,10 +44,9 @@ pub fn state_estimate<'a>(
 
         /* nu, omega, timeについても構造体定義して受け取るべき */
         // /* nu, omegaの更新は? */
-        (nuo, omegao) = (nu, omega);
         /* update robot time */
         time += delta;
-        /* update robot position */
+        (nuo, omegao) = (nu, omega);
     }
     (time, nu, omega, kf_pose, sensor.sensor_data)
 

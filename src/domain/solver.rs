@@ -1,3 +1,4 @@
+use super::constraint::Constraint;
 use super::localize as loc;
 use super::utils as ut;
 use nalgebra as na;
@@ -18,7 +19,7 @@ pub struct MotionEdge {
 }
 
 impl MotionEdge {
-    pub fn new(t1: usize, t2: usize, xs_vec: Vec<(f32, f32, f32)>) -> Self {
+    pub fn new(t1: usize, t2: usize, xs_vec: &Vec<(f32, f32, f32)>) -> Self {
         let hat_x1 = na::Vector3::new(xs_vec[t1].0, xs_vec[t1].1, xs_vec[t1].2);
         let hat_x2 = na::Vector3::new(xs_vec[t2].0, xs_vec[t2].1, xs_vec[t2].2);
 
@@ -134,19 +135,17 @@ pub struct SensorEdge {
 
 impl SensorEdge {
     pub fn new(
-        t1_f32: f32,
-        t2_f32: f32,
-        z1_vec: (f32, f32, f32, f32),
-        z2_vec: (f32, f32, f32, f32),
-        xs_vec: Vec<(f32, f32, f32)>,
+        t1: usize,
+        t2: usize,
+        z1_cr: Constraint,
+        z2_cr: Constraint,
+        xs_vec: &Vec<(f32, f32, f32)>,
     ) -> Self {
-        assert_eq!(z1_vec.0, z2_vec.0);
-        let t1 = t1_f32 as usize;
-        let t2 = t2_f32 as usize;
+        assert_eq!(z1_cr.id, z2_cr.id);
         let x1 = na::Vector3::new(xs_vec[t1].0, xs_vec[t1].1, xs_vec[t1].2);
         let x2 = na::Vector3::new(xs_vec[t2].0, xs_vec[t2].1, xs_vec[t2].2);
-        let z1 = na::Vector3::new(z1_vec.1, z1_vec.2, z1_vec.3);
-        let z2 = na::Vector3::new(z2_vec.1, z2_vec.2, z2_vec.3);
+        let z1 = na::Vector3::new(z1_cr.data.polor[0], z1_cr.data.polor[1], z1_cr.data.psi);
+        let z2 = na::Vector3::new(z2_cr.data.polor[0], z2_cr.data.polor[1], z2_cr.data.psi);
 
         Self {
             t1,

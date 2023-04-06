@@ -6,21 +6,16 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
 use crate::domain::sensor_data::Landmark;
+use crate::domain::sensor_data::LandmarkData;
 use crate::domain::sensor_data::SensorData;
 
 pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
 pub const SLAMPATH: &str = "out/slamout.txt";
 
-pub fn pose_read(
-    path: &str,
-) -> (
-    Vec<(f32, f32, f32)>,
-    Vec<Vec<(f32, f32, f32, f32)>>,
-    Vec<(f32, f32)>,
-) {
+pub fn pose_read(path: &str) -> (Vec<(f32, f32, f32)>, Vec<Vec<SensorData>>, Vec<(f32, f32)>) {
     let mut hat_xs: Vec<(f32, f32, f32)> = vec![];
-    let mut zlist: Vec<Vec<(f32, f32, f32, f32)>> = vec![vec![]];
+    let mut sensor_data: Vec<Vec<SensorData>> = vec![vec![]];
     let mut us: Vec<(f32, f32)> = vec![];
     let file = File::open(path).expect("Failed to open file");
     let reader = BufReader::new(file);
@@ -30,7 +25,6 @@ pub fn pose_read(
             .split_whitespace()
             .map(|s| s.parse().unwrap())
             .collect();
-        // println!("{:?}", array);
         let step: usize = array[1] as usize;
         if array[0] == 0. {
             if step >= us.len() {
@@ -43,14 +37,33 @@ pub fn pose_read(
             }
             hat_xs[step] = (array[2], array[3], array[4]);
         } else if array[0] == 2. {
-            if step >= zlist.len() {
-                zlist.resize(step + 1, vec![(array[2], array[3], array[4], array[5])]);
+            if step >= sensor_data.len() {
+                sensor_data.resize(
+                    step + 1,
+                    vec![SensorData {
+                        id: array[2] as usize,
+                        timestamp: step,
+                        result: true,
+                        data: LandmarkData {
+                            polor: na::Matrix2x1::new(array[3], array[4]),
+                            psi: array[5],
+                        },
+                    }],
+                );
             } else {
-                zlist[step].push((array[2], array[3], array[4], array[5]));
+                sensor_data[step].push(SensorData {
+                    id: array[2] as usize,
+                    timestamp: step,
+                    result: true,
+                    data: LandmarkData {
+                        polor: na::Matrix2x1::new(array[3], array[4]),
+                        psi: array[5],
+                    },
+                });
             }
         }
     }
-    (hat_xs, zlist, us)
+    (hat_xs, sensor_data, us)
 }
 
 /* confirm directry */
@@ -98,8 +111,8 @@ pub fn pose_write(
 }
 
 pub fn slam_write(
-    hat_xs: Vec<(f32, f32, f32)>,
-    zlist: Vec<Vec<(f32, f32, f32, f32)>>,
+    hat_xs: &Vec<(f32, f32, f32)>,
+    sensor_data: &Vec<Vec<SensorData>>,
     landmarks: &[Landmark; 6],
 ) {
     let file = OpenOptions::new()
@@ -126,12 +139,18 @@ pub fn slam_write(
         )
         .expect("err write");
     }
-    for i in 0..zlist.len() {
-        for j in 0..zlist[i].len() {
+    for data in sensor_data {
+        // for i in 0..sensor_data.len() {
+        for d in data {
             writeln!(
                 writer,
                 "2 {} {} {} {} {}",
-                i, zlist[i][j].0, zlist[i][j].1, zlist[i][j].2, zlist[i][j].3,
+                d.timestamp,
+                d.id,
+                d.data.polor[0],
+                d.data.polor[1],
+                d.data.psi,
+                // i, sensor_data[i][j].0, sensor_data[i][j].1, sensor_data[i][j].2, sensor_data[i][j].3,
             )
             .expect("err write");
         }

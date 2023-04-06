@@ -1,4 +1,4 @@
-use crate::domain::sensor_data::Landmark;
+use crate::domain::sensor_data::{Landmark, SensorData};
 
 use super::file;
 use plotters::{coord::types::RangedCoordf64, prelude::*};
@@ -16,11 +16,11 @@ pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
 
     chart.configure_mesh().draw().unwrap();
 
-    let (hat_xs, zlist, _) = file::pose_read(path);
+    let (hat_xs, sensor_data, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
     plot_landmark(&mut chart, &landmarks);
-    plot_edge(&mut chart, &hat_xs, &zlist);
+    plot_edge(&mut chart, &hat_xs, &sensor_data);
 }
 
 pub fn plot_slam(path: &str, landmarks: &[Landmark; 6]) {
@@ -36,11 +36,11 @@ pub fn plot_slam(path: &str, landmarks: &[Landmark; 6]) {
 
     chart.configure_mesh().draw().unwrap();
 
-    let (hat_xs, zlist, _) = file::pose_read(path);
+    let (hat_xs, sensor_data, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
     plot_landmark(&mut chart, &landmarks);
-    plot_edge(&mut chart, &hat_xs, &zlist);
+    plot_edge(&mut chart, &hat_xs, &sensor_data);
 }
 
 pub fn plot_pose(
@@ -61,7 +61,6 @@ pub fn plot_landmark(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
     array: &[Landmark; 6],
 ) {
-    // let (array, _) = landmark::dec_landmark();
     let point_series = array.iter().map(|landmark| {
         Circle::new(
             (landmark.pose.x as f64, landmark.pose.y as f64),
@@ -76,27 +75,18 @@ pub fn plot_landmark(
 pub fn plot_edge(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
     hat_xs: &Vec<(f32, f32, f32)>,
-    zlist: &Vec<Vec<(f32, f32, f32, f32)>>,
+    sensor_data: &Vec<Vec<SensorData>>,
 ) {
     for ar in 1..hat_xs.len() {
         let x1 = hat_xs[ar].0;
         let y1 = hat_xs[ar].1;
         let theta = hat_xs[ar].2;
-        let zarray = &zlist[ar];
-        // let zsize =  std::mem::size_of_val(zarray) / std::mem::size_of::<f32>();
-        let zsize = zarray.len();
-        for i in 0..zsize {
-            let ell = zarray[i].1;
-            let phi = zarray[i].2;
+        let data = &sensor_data[ar];
+        for d in data {
+            let ell = d.data.polor[0];
+            let phi = d.data.polor[1];
             let x2: f32 = x1 + ell * ((theta + phi).cos());
             let y2: f32 = y1 + ell * ((theta + phi).sin());
-            // println!(
-            //     "x1:{}, y1:{}, x2:{}, y2:{}, ell:{}, phi:{}",
-            //     x1, y1, x2, y2, ell, phi
-            // );
-            // let poly: Polyline = [(x1 as f64, y1 as f64), (x2 as f64, y2 as f64)].iter().copied().into_polyline();
-            // let line_style = BLACK.stroke_width(2);
-            // let line_series = PathElement::new(poly, line_style);
 
             let line_series = LineSeries::new(
                 [(x1 as f64, y1 as f64), (x2 as f64, y2 as f64)]

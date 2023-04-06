@@ -1,10 +1,12 @@
 use nalgebra as na;
 
+#[derive(Clone)]
 pub struct LandmarkData {
     pub polor: na::Matrix2x1<f32>,
     pub psi: f32,
 }
 
+#[derive(Clone)]
 pub struct SensorData {
     pub id: usize,
     pub timestamp: usize,
