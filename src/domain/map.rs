@@ -11,6 +11,11 @@ pub struct MapEdge {
     pub xi: na::Vector3<f32>,
 }
 
+impl Default for MapEdge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl MapEdge {
     pub fn new() -> Self {
         Self {
@@ -31,7 +36,7 @@ impl MapEdge {
         z: LandmarkData,
         head_t: usize,
         head_z: LandmarkData,
-        xs_vec: &Vec<(f32, f32, f32)>,
+        xs_vec: &[(f32, f32, f32)],
     ) {
         let sensor_noise_rate = [0.14, 0.05, 0.05];
         self.x = na::Vector3::new(xs_vec[t].0, xs_vec[t].1, xs_vec[t].2);

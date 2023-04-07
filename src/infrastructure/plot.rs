@@ -1,6 +1,5 @@
-use crate::domain::sensor_data::{Landmark, SensorData};
-
 use super::file;
+use crate::domain::sensor_data::{Landmark, SensorData};
 use plotters::{coord::types::RangedCoordf64, prelude::*};
 
 pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
@@ -19,7 +18,7 @@ pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
     let (hat_xs, sensor_data, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
-    plot_landmark(&mut chart, &landmarks);
+    plot_landmark(&mut chart, landmarks);
     plot_edge(&mut chart, &hat_xs, &sensor_data);
 }
 
@@ -39,13 +38,13 @@ pub fn plot_slam(path: &str, landmarks: &[Landmark; 6]) {
     let (hat_xs, sensor_data, _) = file::pose_read(path);
 
     plot_pose(&mut chart, &hat_xs);
-    plot_landmark(&mut chart, &landmarks);
+    plot_landmark(&mut chart, landmarks);
     plot_edge(&mut chart, &hat_xs, &sensor_data);
 }
 
 pub fn plot_pose(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    hat_xs: &Vec<(f32, f32, f32)>,
+    hat_xs: &[(f32, f32, f32)],
 ) {
     let xs: Vec<f64> = hat_xs.iter().map(|(x, _, _)| *x as f64).collect();
     let ys: Vec<f64> = hat_xs.iter().map(|(_, y, _)| *y as f64).collect();
@@ -75,7 +74,7 @@ pub fn plot_landmark(
 pub fn plot_edge(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
     hat_xs: &Vec<(f32, f32, f32)>,
-    sensor_data: &Vec<Vec<SensorData>>,
+    sensor_data: &[Vec<SensorData>],
 ) {
     for ar in 1..hat_xs.len() {
         let x1 = hat_xs[ar].0;

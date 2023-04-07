@@ -78,6 +78,5 @@ pub fn psi_predict(pose: &na::Vector3<f32>, landmark: &na::Vector3<f32>) -> f32 
     let mut rng = thread_rng();
     let diff = pose - landmark;
     let normal = Normal::new((diff[1]).atan2(diff[0]), noise).unwrap();
-    let psi = normal.sample(&mut rng);
-    psi
+    normal.sample(&mut rng)
 }

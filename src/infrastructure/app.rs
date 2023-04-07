@@ -1,15 +1,12 @@
-use super::config;
-use super::file;
-use super::plot;
-use crate::usecase::map_create as map;
-use crate::usecase::state_estimate as estimate;
+use super::{config, file, plot};
+use crate::usecase::{map_create as map, state_estimate as estimate};
 
 pub fn start_app() {
     /* init */
     let landmarks_kf = config::init();
 
     /* main task */
-    let (_, _, _, _, _) = estimate::state_estimate(
+    let (_, _) = estimate::state_estimate(
         config::INIT_NU,
         config::INIT_OMEGA,
         config::TIME,

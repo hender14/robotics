@@ -1,11 +1,11 @@
-use crate::domain::sensor_data::Landmark;
-use crate::domain::sensor_data::{LandmarkData, SensorData};
-use crate::domain::utils as ut;
-use std::f32::consts::PI;
-
+use crate::domain::{
+    sensor_data::{Landmark, LandmarkData, SensorData},
+    utils as ut,
+};
 use nalgebra as na;
 use rand::prelude::{thread_rng, Distribution};
 use rand_distr::Normal;
+use std::f32::consts::PI;
 
 pub struct Sensor {
     distance_bias_rate_std: f32,
@@ -16,6 +16,12 @@ pub struct Sensor {
     direction_range: [f32; 2],
     pub sensor_data: Vec<SensorData>,
     time: usize,
+}
+
+impl Default for Sensor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Sensor {
@@ -66,7 +72,7 @@ impl Sensor {
 
             /* calculate landmark */
             let mut polar_landmark = ut::polar_trans(pose, &landmark.pose);
-            let psi = ut::psi_predict(&pose, &landmark.pose);
+            let psi = ut::psi_predict(pose, &landmark.pose);
 
             /* refrect noize etc */
             self.sensor_data[landmark.id].result = self.visible(&polar_landmark);
@@ -79,10 +85,10 @@ impl Sensor {
     }
 
     pub fn visible(&self, polarpos: &na::Matrix2x1<f32>) -> bool {
-        return self.distance_range[0] <= polarpos[0]
+        self.distance_range[0] <= polarpos[0]
             && polarpos[0] <= self.distance_range[1]
             && self.direction_range[0] <= polarpos[1]
-            && polarpos[1] <= self.direction_range[1];
+            && polarpos[1] <= self.direction_range[1]
     }
 
     pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>, id: usize) -> na::Matrix2x1<f32> {

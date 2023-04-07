@@ -1,16 +1,17 @@
 use super::{
     sensor_data::{Landmark, SensorData},
+    state::Twist,
     utils as ut,
 };
 use nalgebra as na;
 
-struct Belief {
-    mean: na::Vector3<f32>,
+pub struct Belief {
+    pub mean: na::Vector3<f32>,
     cov: na::Matrix3<f32>,
 }
 
 pub struct KFilterPose<'a> {
-    belief: Belief,
+    pub belief: Belief,
     system_cov: &'a ut::Stds,
     distance_dev_rate: f32,
     direction_dev: f32,
@@ -36,19 +37,15 @@ impl<'a> KFilterPose<'a> {
         }
     }
 
-    pub fn kf_predict(&mut self, nu: f32, omega: f32, time: f32) {
-        let m = ut::mat_m(nu, omega, time, self.system_cov);
-        let a = ut::mat_a(nu, omega, time, self.belief.mean[2]);
-        let f = ut::mat_f(nu, omega, time, self.belief.mean[2]);
+    pub fn kf_predict(&mut self, velocity: Twist, time: f32) {
+        let m = ut::mat_m(velocity.nu, velocity.omega, time, self.system_cov);
+        let a = ut::mat_a(velocity.nu, velocity.omega, time, self.belief.mean[2]);
+        let f = ut::mat_f(velocity.nu, velocity.omega, time, self.belief.mean[2]);
         self.belief.cov = f * (self.belief.cov) * (f.transpose()) + a * (m) * (a.transpose());
-        self.belief.mean = state_transition(nu, omega, time, &self.belief.mean);
+        self.belief.mean = state_transition(velocity.nu, velocity.omega, time, &self.belief.mean);
     }
 
-    pub fn kf_update(
-        &mut self,
-        sensor_data: &Vec<SensorData>,
-        landmarks: &[Landmark; 6],
-    ) -> na::Vector3<f32> {
+    pub fn kf_update(&mut self, sensor_data: &[SensorData], landmarks: &[Landmark; 6]) {
         /* Process by landmark */
         for landmark in landmarks {
             if sensor_data[landmark.id].result {
@@ -66,7 +63,6 @@ impl<'a> KFilterPose<'a> {
                 self.belief.cov = (na::Matrix3::identity() - kalman_gain * h) * self.belief.cov;
             }
         }
-        self.belief.mean
     }
 }
 
@@ -78,13 +74,12 @@ pub fn state_transition(
 ) -> na::Vector3<f32> {
     let t0 = pose[2];
     if omega.abs() < 1e-10 {
-        return pose + na::Vector3::new(nu * t0.cos(), nu * t0.sin(), omega) * time;
+        pose + na::Vector3::new(nu * t0.cos(), nu * t0.sin(), omega) * time
     } else {
-        return pose
-            + na::Vector3::new(
-                nu / omega * ((t0 + omega * time).sin() - t0.sin()),
-                nu / omega * (-(t0 + omega * time).cos() + t0.cos()),
-                omega * time,
-            );
+        pose + na::Vector3::new(
+            nu / omega * ((t0 + omega * time).sin() - t0.sin()),
+            nu / omega * (-(t0 + omega * time).cos() + t0.cos()),
+            omega * time,
+        )
     }
 }

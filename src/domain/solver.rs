@@ -1,6 +1,8 @@
-use super::constraint::Constraint;
-use super::localize as loc;
-use super::utils as ut;
+use super::{
+    constraint::Constraint,
+    state::{self, Twist},
+    utils as ut,
+};
 use nalgebra as na;
 use std::f32::consts::PI;
 
@@ -19,7 +21,7 @@ pub struct MotionEdge {
 }
 
 impl MotionEdge {
-    pub fn new(t1: usize, t2: usize, xs_vec: &Vec<(f32, f32, f32)>) -> Self {
+    pub fn new(t1: usize, t2: usize, xs_vec: &[(f32, f32, f32)]) -> Self {
         let hat_x1 = na::Vector3::new(xs_vec[t1].0, xs_vec[t1].1, xs_vec[t1].2);
         let hat_x2 = na::Vector3::new(xs_vec[t2].0, xs_vec[t2].1, xs_vec[t2].2);
 
@@ -38,14 +40,15 @@ impl MotionEdge {
         }
     }
 
-    pub fn action_matrix(&mut self, us_vec: Vec<(f32, f32)>, delta: f32) {
+    pub fn action_matrix(&mut self, velocity_vec: &[Twist], delta: f32) {
         let motion_noise_stds = ut::Stds {
             nn: 0.19,
             no: 0.001,
             oo: 0.13,
             on: 0.2,
         };
-        let (nu, mut omega) = (us_vec[self.t1].0, us_vec[self.t1].1);
+        let velocity = velocity_vec[self.t1].clone();
+        let (nu, mut omega) = (velocity.nu, velocity.omega);
 
         if omega.abs() < 1e-5 {
             omega = 1e-5;
@@ -64,7 +67,7 @@ impl MotionEdge {
         self.omega_bottomleft = self.omega * f;
         self.omega_bottomright = self.omega;
 
-        let x2 = loc::state_transition(nu, omega, delta, &self.hat_x1);
+        let x2 = state::state_transition(&velocity, delta, &self.hat_x1);
         self.xi_upper = f.transpose() * self.omega * (self.hat_x2 - x2);
         self.xi_bottom = -self.omega * (self.hat_x2 - x2);
     }
@@ -139,7 +142,7 @@ impl SensorEdge {
         t2: usize,
         z1_cr: Constraint,
         z2_cr: Constraint,
-        xs_vec: &Vec<(f32, f32, f32)>,
+        xs_vec: &[(f32, f32, f32)],
     ) -> Self {
         assert_eq!(z1_cr.id, z2_cr.id);
         let x1 = na::Vector3::new(xs_vec[t1].0, xs_vec[t1].1, xs_vec[t1].2);

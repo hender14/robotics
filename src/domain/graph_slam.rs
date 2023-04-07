@@ -1,12 +1,11 @@
-use super::super::domain::solver::MotionEdge;
-use super::super::domain::solver::SensorEdge;
-use super::constraint::Constraint;
+use super::{constraint::Constraint, state::Twist};
+use crate::domain::solver::{MotionEdge, SensorEdge};
 use itertools::Itertools;
 use nalgebra as na;
 
 pub fn graph_slam(
     hat_xs: &Vec<(f32, f32, f32)>,
-    us: &Vec<(f32, f32)>,
+    velocity: &[Twist],
     landmark_list: &[Vec<(usize, Constraint)>; 6],
 ) -> na::Matrix<f32, na::Dyn, na::Const<1>, na::VecStorage<f32, na::Dyn, na::Const<1>>> {
     let xdim = hat_xs.len() * 3;
@@ -16,8 +15,8 @@ pub fn graph_slam(
     }
     let mut xi = na::DVector::<f32>::zeros(xdim);
 
-    for index in 0..landmark_list.len() {
-        for comb in landmark_list[index].iter().combinations(2) {
+    for landmark in landmark_list {
+        for comb in landmark.iter().combinations(2) {
             let mut sensordges = SensorEdge::new(
                 comb[0].0,
                 comb[1].0,
@@ -30,12 +29,10 @@ pub fn graph_slam(
 
             for i in 0..hat_xs.len() - 1 {
                 let mut motionedges = MotionEdge::new(i, i + 1, hat_xs);
-                motionedges.action_matrix(us.clone(), 1.);
+                motionedges.action_matrix(velocity, 1.);
                 (omega, xi) = motionedges.add_edge(omega, xi);
             }
         }
     }
-
-    let delta_xs = (omega.try_inverse().unwrap()) * xi;
-    delta_xs
+    (omega.try_inverse().unwrap()) * xi
 }

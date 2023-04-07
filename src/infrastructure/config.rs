@@ -15,8 +15,7 @@ pub const INIT_COV: f32 = 1e-10;
 pub fn init() -> [Landmark; 6] {
     file::directry_init();
     file::file_init();
-    let landmarks = get_landmark();
-    landmarks
+    get_landmark()
 }
 
 /* get landmark position */

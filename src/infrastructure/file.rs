@@ -1,22 +1,23 @@
+use crate::domain::{
+    sensor_data::{Landmark, LandmarkData, SensorData},
+    state::{State, Twist},
+};
 use nalgebra as na;
-use std::fs;
-use std::fs::File;
-use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-
-use crate::domain::sensor_data::Landmark;
-use crate::domain::sensor_data::LandmarkData;
-use crate::domain::sensor_data::SensorData;
+use std::{
+    fs,
+    fs::{File, OpenOptions},
+};
 
 pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
 pub const SLAMPATH: &str = "out/slamout.txt";
 
-pub fn pose_read(path: &str) -> (Vec<(f32, f32, f32)>, Vec<Vec<SensorData>>, Vec<(f32, f32)>) {
+pub fn pose_read(path: &str) -> (Vec<(f32, f32, f32)>, Vec<Vec<SensorData>>, Vec<Twist>) {
     let mut hat_xs: Vec<(f32, f32, f32)> = vec![];
     let mut sensor_data: Vec<Vec<SensorData>> = vec![vec![]];
-    let mut us: Vec<(f32, f32)> = vec![];
+    let mut velocity: Vec<Twist> = vec![];
     let file = File::open(path).expect("Failed to open file");
     let reader = BufReader::new(file);
     for line in reader.lines() {
@@ -27,10 +28,19 @@ pub fn pose_read(path: &str) -> (Vec<(f32, f32, f32)>, Vec<Vec<SensorData>>, Vec
             .collect();
         let step: usize = array[1] as usize;
         if array[0] == 0. {
-            if step >= us.len() {
-                us.resize(step + 1, (0.0, 0.0));
+            if step >= velocity.len() {
+                velocity.resize(
+                    step + 1,
+                    Twist {
+                        nu: 0.0,
+                        omega: 0.0,
+                    },
+                );
             }
-            us[step] = (array[2], array[3]);
+            velocity[step] = Twist {
+                nu: array[2],
+                omega: array[3],
+            };
         } else if array[0] == 1. {
             if step >= hat_xs.len() {
                 hat_xs.resize(step + 1, (0.0, 0.0, 0.0));
@@ -63,7 +73,7 @@ pub fn pose_read(path: &str) -> (Vec<(f32, f32, f32)>, Vec<Vec<SensorData>>, Vec
             }
         }
     }
-    (hat_xs, sensor_data, us)
+    (hat_xs, sensor_data, velocity)
 }
 
 /* confirm directry */
@@ -77,27 +87,31 @@ pub fn directry_init() {
 
 /* create file */
 pub fn file_init() {
-    File::create(&KFPATH).expect("can not create file");
-    File::create(&SLAMPATH).expect("can not create file");
+    File::create(KFPATH).expect("can not create file");
+    File::create(SLAMPATH).expect("can not create file");
 }
 
-pub fn pose_write(
-    time: f32,
-    nu: f32,
-    omega: f32,
-    pose: &na::Vector3<f32>,
-    sensor_data: &Vec<SensorData>,
-) {
+pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &Vec<SensorData>) {
     let file = OpenOptions::new()
         .write(true)
         .append(true)
-        .open(&KFPATH)
+        .open(KFPATH)
         .expect("can not open file");
     let mut writer = BufWriter::new(file);
 
     // 変数をファイルに書き込む
-    writeln!(writer, "0 {} {} {}", time, nu, omega).expect("err write");
-    writeln!(writer, "1 {} {} {} {}", time, pose[0], pose[1], pose[2]).expect("err write");
+    writeln!(
+        writer,
+        "0 {} {} {}",
+        robot.time, robot.velocity.nu, robot.velocity.omega
+    )
+    .expect("err write");
+    writeln!(
+        writer,
+        "1 {} {} {} {}",
+        robot.time, pose[0], pose[1], pose[2]
+    )
+    .expect("err write");
     for data in sensor_data {
         if data.result {
             writeln!(
@@ -111,25 +125,20 @@ pub fn pose_write(
 }
 
 pub fn slam_write(
-    hat_xs: &Vec<(f32, f32, f32)>,
+    hat_xs: &[(f32, f32, f32)],
     sensor_data: &Vec<Vec<SensorData>>,
     landmarks: &[Landmark; 6],
 ) {
     let file = OpenOptions::new()
         .write(true)
         .append(true)
-        .open(&SLAMPATH)
+        .open(SLAMPATH)
         .expect("can not open file");
     let mut writer = BufWriter::new(file);
 
     // 変数をファイルに書き込む
-    for i in 0..hat_xs.len() {
-        writeln!(
-            writer,
-            "1 {} {} {} {}",
-            i, hat_xs[i].0, hat_xs[i].1, hat_xs[i].2
-        )
-        .expect("err write");
+    for (i, xs) in hat_xs.iter().enumerate() {
+        writeln!(writer, "1 {} {} {} {}", i, xs.0, xs.1, xs.2).expect("err write");
     }
     for landmark in landmarks {
         writeln!(
