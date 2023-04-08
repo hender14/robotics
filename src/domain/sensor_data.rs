@@ -1,12 +1,12 @@
 use nalgebra as na;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LandmarkData {
     pub polor: na::Matrix2x1<f32>,
     pub psi: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SensorData {
     pub id: usize,
     pub timestamp: usize,
@@ -48,4 +48,23 @@ pub fn init_landmark() -> [Landmark; 6] {
         },
     ];
     pose
+}
+
+pub fn data_init() -> [SensorData; 6] {
+    let sensor_data: [SensorData; 6] = [0, 1, 2, 3, 4, 5]
+        .iter()
+        .map(|&id| SensorData {
+            id,
+            timestamp: 0,
+            result: false,
+            data: LandmarkData {
+                polor: na::Matrix2x1::new(0., 0.),
+                psi: 0.,
+            },
+        })
+        .collect::<Vec<SensorData>>()
+        .try_into()
+        .unwrap_or_else(|_| panic!("Failed to initialize sensor_data_array."));
+
+    sensor_data
 }

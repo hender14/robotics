@@ -1,9 +1,10 @@
 use crate::domain::{
-    sensor_data::{Landmark, LandmarkData, SensorData},
+    sensor_data::{data_init, Landmark, LandmarkData, SensorData},
     utils as ut,
 };
 use nalgebra as na;
-use rand::prelude::{thread_rng, Distribution};
+use rand::distributions::{Distribution, Uniform};
+use rand::prelude::thread_rng;
 use rand_distr::Normal;
 use std::f32::consts::PI;
 
@@ -14,7 +15,12 @@ pub struct Sensor {
     direction_noise: f32,
     distance_range: [f32; 2],
     direction_range: [f32; 2],
-    pub sensor_data: Vec<SensorData>,
+    phantom_dist_x: Uniform<f32>,
+    phantom_dist_y: Uniform<f32>,
+    phantom_prob: f32,
+    oversight_prob: f32,
+    occlusion_prob: f32,
+    pub sensor_data: [SensorData; 6],
     time: usize,
 }
 
@@ -26,23 +32,32 @@ impl Default for Sensor {
 
 impl Sensor {
     pub fn new() -> Self {
+        let mut rng = rand::thread_rng();
+        let normal_dist = Normal::new(0.0, 1.0).unwrap();
+        let phantom_range_x = (-5., 5.);
+        let phantom_range_y = (-5., 5.);
         Self {
-            distance_bias_rate_std: 0.1,
-            direction_bias: 2. * PI * 2. / 360.,
+            distance_bias_rate_std: normal_dist.sample(&mut rng) * 0.1,
+            direction_bias: normal_dist.sample(&mut rng) * 2. * PI * 2. / 360.,
             distance_noise_rate: 0.1,
             direction_noise: 2. * PI * 2. / 360.,
             distance_range: [0.5, 6.],
             direction_range: [-(PI / 3.), PI / 3.],
-            sensor_data: Self::object_init(),
+            phantom_dist_x: Uniform::new(phantom_range_x.0, phantom_range_x.1),
+            phantom_dist_y: Uniform::new(phantom_range_y.0, phantom_range_y.1),
+            phantom_prob: 0.,
+            oversight_prob: 0.1,
+            occlusion_prob: 0.,
+            sensor_data: Sensor::data_init(),
             time: 0,
         }
     }
 
-    fn object_init() -> Vec<SensorData> {
-        let mut sensor_data = vec![];
-        for i in 0..6 {
-            sensor_data.push(SensorData {
-                id: i,
+    pub fn data_init() -> [SensorData; 6] {
+        let sensor_data: [SensorData; 6] = [0, 1, 2, 3, 4, 5]
+            .iter()
+            .map(|&id| SensorData {
+                id,
                 timestamp: 0,
                 result: false,
                 data: LandmarkData {
@@ -50,17 +65,26 @@ impl Sensor {
                     psi: 0.,
                 },
             })
-        }
-
+            .collect::<Vec<SensorData>>()
+            .try_into()
+            .unwrap_or_else(|_| panic!("Failed to initialize sensor_data_array."));
         sensor_data
     }
 
-    pub fn sensor_receive(&mut self, pose: &na::Vector3<f32>, landmarks: &[Landmark; 6]) {
+    pub fn sensor_receive(
+        &mut self,
+        pose: &na::Vector3<f32>,
+        landmarks: &[Landmark; 6],
+    ) -> [SensorData; 6] {
+        /* sensor init */
+        self.sensor_data = data_init();
+
         /* find landmark */
         self.find_landmark(landmarks, pose);
 
         /* time increment */
         self.time += 1;
+        self.sensor_data.clone()
     }
 
     pub fn find_landmark(&mut self, landmarks: &[Landmark; 6], pose: &na::Vector3<f32>) {
@@ -75,30 +99,79 @@ impl Sensor {
             let psi = ut::psi_predict(pose, &landmark.pose);
 
             /* refrect noize etc */
-            self.sensor_data[landmark.id].result = self.visible(&polar_landmark);
-            polar_landmark = self.exter_dist(polar_landmark, landmark.id);
-            self.sensor_data[landmark.id].data = LandmarkData {
-                polor: polar_landmark,
-                psi,
-            };
+            polar_landmark = self.phantom(pose, &polar_landmark);
+            polar_landmark = self.occlusion(&polar_landmark);
+            let polar_some = self.oversight(&polar_landmark);
+
+            if self.visible(&polar_some) {
+                polar_landmark = self.exter_dist(polar_landmark);
+                self.sensor_data[landmark.id].data = LandmarkData {
+                    polor: polar_landmark,
+                    psi,
+                };
+                self.sensor_data[landmark.id].result = true;
+            } else {
+                self.sensor_data[landmark.id].result = false;
+            }
+            // println!("{}: {:?}", landmark.id, self.sensor_data[landmark.id]);
         }
     }
 
-    pub fn visible(&self, polarpos: &na::Matrix2x1<f32>) -> bool {
-        self.distance_range[0] <= polarpos[0]
-            && polarpos[0] <= self.distance_range[1]
-            && self.direction_range[0] <= polarpos[1]
-            && polarpos[1] <= self.direction_range[1]
-    }
+    fn phantom(&self, pose: &na::Vector3<f32>, relpos: &na::Vector2<f32>) -> na::Vector2<f32> {
+        let mut rng = rand::thread_rng();
+        let uniform_dist = Uniform::new(0.0, 1.0);
 
-    pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>, id: usize) -> na::Matrix2x1<f32> {
-        if self.sensor_data[id].result {
-            obj_dis = Sensor::bias(self, &obj_dis);
-            obj_dis = Sensor::noise(self, &obj_dis);
+        if uniform_dist.sample(&mut rng) < self.phantom_prob {
+            let pos = na::Vector3::new(
+                self.phantom_dist_x.sample(&mut rng),
+                self.phantom_dist_y.sample(&mut rng),
+                0.,
+            );
+            ut::polar_trans(pose, &pos)
         } else {
-            obj_dis = na::Matrix2x1::new(0.0, 0.0);
+            *relpos
         }
-        obj_dis
+    }
+
+    fn occlusion(&self, relpos: &na::Vector2<f32>) -> na::Vector2<f32> {
+        let mut rng = rand::thread_rng();
+        let uniform_dist = Uniform::new(0.0, 1.0);
+
+        if uniform_dist.sample(&mut rng) < self.occlusion_prob {
+            let ell =
+                relpos[0] + uniform_dist.sample(&mut rng) * (self.distance_range[1] - relpos[0]);
+            na::Vector2::new(ell, relpos[1])
+        } else {
+            *relpos
+        }
+    }
+
+    fn oversight(&self, relpos: &na::Vector2<f32>) -> Option<na::Vector2<f32>> {
+        let mut rng = rand::thread_rng();
+        let uniform_dist = Uniform::new(0.0, 1.0);
+
+        if uniform_dist.sample(&mut rng) < self.oversight_prob {
+            None
+        } else {
+            Some(*relpos)
+        }
+    }
+
+    pub fn visible(&self, polarpos: &Option<na::Vector2<f32>>) -> bool {
+        match polarpos {
+            None => false,
+            Some(polarpos) => {
+                self.distance_range[0] <= polarpos[0]
+                    && polarpos[0] <= self.distance_range[1]
+                    && self.direction_range[0] <= polarpos[1]
+                    && polarpos[1] <= self.direction_range[1]
+            }
+        }
+    }
+
+    pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
+        obj_dis = self.bias(&obj_dis);
+        self.noise(&obj_dis)
     }
     fn bias(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         let mut mat = na::Matrix2x1::zeros();

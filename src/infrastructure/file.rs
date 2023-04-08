@@ -91,7 +91,7 @@ pub fn file_init() {
     File::create(SLAMPATH).expect("can not create file");
 }
 
-pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &Vec<SensorData>) {
+pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &[SensorData; 6]) {
     let file = OpenOptions::new()
         .write(true)
         .append(true)
