@@ -11,7 +11,7 @@ pub fn state_estimate(
     omega: f32,
     delta: f32, /* control period */
     pose: na::Vector3<f32>,
-    landmarks: &[Landmark; 6],
+    landmarks: &[Landmark],
 ) -> (na::Vector3<f32>, [SensorData; 6]) {
     /* 初期値はインフラ層で定義すべき */
     let init_cov = config::INIT_COV;
@@ -23,7 +23,7 @@ pub fn state_estimate(
     let mut kf = kf::KFilterPose::new(&pose, init_cov);
     let mut sensor = Sensor::new();
 
-    // /* main loop */
+    /* main loop */
     for _i in 0..config::LOOP_NUM {
         /* update robot */
         /* update velocity */
@@ -32,7 +32,7 @@ pub fn state_estimate(
         robot.update_state(delta);
 
         /* receive sensor data */
-        sensor_data = sensor.sensor_receive(&robot.state.pose, landmarks);
+        sensor_data = sensor.sensor_receive(&robot.state.pose, landmarks, delta);
 
         /* kalman filter */
         kf.kf_predict(velocityo, delta);
@@ -41,7 +41,7 @@ pub fn state_estimate(
         /* calculate kalman filtered pose */
         kf.kf_update(&sensor_data, landmarks);
 
-        /* file */
+        /* Write to file */
         file::pose_write(&robot.state, &kf.belief.mean, &sensor_data);
 
         /* update robot */

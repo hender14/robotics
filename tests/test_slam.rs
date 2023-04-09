@@ -24,7 +24,7 @@ mod tests {
     }
 
     /* validate */
-    fn validate(ans: &[Landmark; 6], out: &[Landmark; 6]) -> bool {
+    fn validate(ans: &[Landmark], out: &[Landmark]) -> bool {
         let mut flag = true;
         for i in 0..6 {
             for j in 0..2 {

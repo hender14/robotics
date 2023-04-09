@@ -2,7 +2,7 @@ use super::file;
 use crate::domain::sensor_data::{Landmark, SensorData};
 use plotters::{coord::types::RangedCoordf64, prelude::*};
 
-pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
+pub fn plot_kf(path: &str, landmarks: &[Landmark]) {
     let root = BitMapBackend::new("out/kfplot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
@@ -22,7 +22,7 @@ pub fn plot_kf(path: &str, landmarks: &[Landmark; 6]) {
     plot_edge(&mut chart, &hat_xs, &sensor_data);
 }
 
-pub fn plot_slam(path: &str, landmarks: &[Landmark; 6]) {
+pub fn plot_slam(path: &str, landmarks: &[Landmark]) {
     let root = BitMapBackend::new("out/slamplot.png", (640, 480)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
@@ -58,7 +58,7 @@ pub fn plot_pose(
 
 pub fn plot_landmark(
     chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    array: &[Landmark; 6],
+    array: &[Landmark],
 ) {
     let point_series = array.iter().map(|landmark| {
         Circle::new(

@@ -1,14 +1,15 @@
 use nalgebra as na;
-use rand_distr::Normal;
-use rand_distr::{Distribution, Exp, Uniform};
+use rand_distr::{Distribution, Exp, Normal, Uniform};
 use std::f32::consts::PI;
 
+/* Twist struct represents the robot's linear and angular velocity. */
 #[derive(Clone, Debug)]
 pub struct Twist {
     pub nu: f32,
     pub omega: f32,
 }
 
+/* State struct, represents the robot's current state. */
 #[derive(Clone, Debug)]
 pub struct State {
     pub time: f32,
@@ -16,6 +17,7 @@ pub struct State {
     pub velocity: Twist,
 }
 
+/* create a new State with the given pose and velocity. */
 pub fn new(pose: na::Vector3<f32>, nu: f32, omega: f32) -> State {
     State {
         time: 0.,
@@ -24,6 +26,7 @@ pub fn new(pose: na::Vector3<f32>, nu: f32, omega: f32) -> State {
     }
 }
 
+/* Robot struct, which represents the robot and its properties. */
 pub struct Robot {
     pub state: State,
     r: f32,
@@ -44,6 +47,7 @@ pub struct Robot {
 }
 
 impl Robot {
+    /* create a new Robot with the given pose and velocity. */
     pub fn new(pose: na::Vector3<f32>, nu: f32, omega: f32) -> Self {
         let mut rng = rand::thread_rng();
         let noise_pdf = Exp::new(1.0 / (1e-100 + 5.)).unwrap();
@@ -79,33 +83,31 @@ impl Robot {
         }
     }
 
+    /* update the robot's velocity with the given linear and angular velocity. */
     pub fn update_velocity(&mut self, mut nu: f32, mut omega: f32, delta: f32) {
         (nu, omega) = self.bias(nu, omega);
         // (nu, omega) = self.stuck(nu, omega, delta);
-        // println!("stuck: {:?}", (nu, omega));
         self.state.velocity = Twist { nu, omega };
-        // println!("velocity: {:?}", self.state.velocity);
     }
-
+    /* update the robot's state (pose) based on its current velocity and time interval. */
     pub fn update_state(&mut self, delta: f32) {
         self.state.pose = state_transition(&self.state.velocity, delta, &self.state.pose);
         self.noise(delta);
         // self.kidnap(delta);
-        // println!("state: {:?}", self.state);
     }
 
+    /* update the robot's time with the given time interval. */
     pub fn update_time(&mut self, delta: f32) {
         self.state.time += delta;
     }
 
+    /* apply bias to the robot's linear and angular velocity. */
     pub fn bias(&self, nu: f32, omega: f32) -> (f32, f32) {
         (nu * self.bias_rate_nu, omega * self.bias_rate_omega)
     }
 
+    /* simulate the robot getting stuck or escaping. */
     pub fn stuck(&mut self, nu: f32, omega: f32, time_interval: f32) -> (f32, f32) {
-        // println!("stuck: {:?}", self.is_stuck);
-        // println!("time_until_stuck: {:?}", self.time_until_stuck);
-        // println!("time_until_escape: {:?}", self.time_until_escape);
         if self.is_stuck {
             self.time_until_escape -= time_interval;
             if self.time_until_escape <= 0.0 {
@@ -128,6 +130,7 @@ impl Robot {
         )
     }
 
+    /* add noise to the robot's orientation based on the distance traveled. */
     pub fn noise(&mut self, time_interval: f32) {
         self.distance_until_noise -= self.state.velocity.nu.abs() * time_interval
             + self.r * self.state.velocity.omega.abs() * time_interval;

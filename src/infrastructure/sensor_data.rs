@@ -74,7 +74,8 @@ impl Sensor {
     pub fn sensor_receive(
         &mut self,
         pose: &na::Vector3<f32>,
-        landmarks: &[Landmark; 6],
+        landmarks: &[Landmark],
+        delta: f32,
     ) -> [SensorData; 6] {
         /* sensor init */
         self.sensor_data = data_init();
@@ -83,11 +84,11 @@ impl Sensor {
         self.find_landmark(landmarks, pose);
 
         /* time increment */
-        self.time += 1;
+        self.time += delta as usize;
         self.sensor_data.clone()
     }
 
-    pub fn find_landmark(&mut self, landmarks: &[Landmark; 6], pose: &na::Vector3<f32>) {
+    pub fn find_landmark(&mut self, landmarks: &[Landmark], pose: &na::Vector3<f32>) {
         /* Process by landmark */
         for landmark in landmarks {
             /* get timestamp */
@@ -95,7 +96,7 @@ impl Sensor {
             self.sensor_data[landmark.id].timestamp = self.time;
 
             /* calculate landmark */
-            let mut polar_landmark = ut::polar_trans(pose, &landmark.pose);
+            let mut polar_landmark = ut::cartesian_to_polar(pose, &landmark.pose);
             let psi = ut::psi_predict(pose, &landmark.pose);
 
             /* refrect noize etc */
@@ -127,7 +128,7 @@ impl Sensor {
                 self.phantom_dist_y.sample(&mut rng),
                 0.,
             );
-            ut::polar_trans(pose, &pos)
+            ut::cartesian_to_polar(pose, &pos)
         } else {
             *relpos
         }
@@ -171,7 +172,8 @@ impl Sensor {
 
     pub fn exter_dist(&self, mut obj_dis: na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         obj_dis = self.bias(&obj_dis);
-        self.noise(&obj_dis)
+        obj_dis = self.noise(&obj_dis);
+        obj_dis
     }
     fn bias(&self, &obj_dis: &na::Matrix2x1<f32>) -> na::Matrix2x1<f32> {
         let mut mat = na::Matrix2x1::zeros();

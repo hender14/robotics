@@ -3,12 +3,9 @@ use crate::domain::{
     state::{State, Twist},
 };
 use nalgebra as na;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use std::{
-    fs,
-    fs::{File, OpenOptions},
-};
 
 pub const DIRECTRY: &str = "out";
 pub const KFPATH: &str = "out/kfoutput.txt";
@@ -91,7 +88,7 @@ pub fn file_init() {
     File::create(SLAMPATH).expect("can not create file");
 }
 
-pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &[SensorData; 6]) {
+pub fn pose_write(state: &State, pose: &na::Vector3<f32>, sensor_data: &[SensorData; 6]) {
     let file = OpenOptions::new()
         .write(true)
         .append(true)
@@ -103,13 +100,19 @@ pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &[SensorD
     writeln!(
         writer,
         "0 {} {} {}",
-        robot.time, robot.velocity.nu, robot.velocity.omega
+        state.time, state.velocity.nu, state.velocity.omega
     )
     .expect("err write");
     writeln!(
         writer,
         "1 {} {} {} {}",
-        robot.time, pose[0], pose[1], pose[2]
+        state.time, pose[0], pose[1], pose[2]
+    )
+    .expect("err write");
+    writeln!(
+        writer,
+        "3 {} {} {} {}",
+        state.time, state.pose[0], state.pose[1], state.pose[2]
     )
     .expect("err write");
     for data in sensor_data {
@@ -125,9 +128,9 @@ pub fn pose_write(robot: &State, pose: &na::Vector3<f32>, sensor_data: &[SensorD
 }
 
 pub fn slam_write(
-    hat_xs: &[(f32, f32, f32)],
+    states: &[(f32, f32, f32)],
     sensor_data: &Vec<Vec<SensorData>>,
-    landmarks: &[Landmark; 6],
+    landmarks: &[Landmark],
 ) {
     let file = OpenOptions::new()
         .write(true)
@@ -137,7 +140,7 @@ pub fn slam_write(
     let mut writer = BufWriter::new(file);
 
     // 変数をファイルに書き込む
-    for (i, xs) in hat_xs.iter().enumerate() {
+    for (i, xs) in states.iter().enumerate() {
         writeln!(writer, "1 {} {} {} {}", i, xs.0, xs.1, xs.2).expect("err write");
     }
     for landmark in landmarks {
