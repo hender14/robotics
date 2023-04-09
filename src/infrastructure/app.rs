@@ -5,7 +5,6 @@ pub fn start_app() {
     /* init */
     let landmarks_kf = config::init();
 
-    /* main task */
     /* kalmanfilter */
     let (_, _) = estimate::state_estimate(
         config::INIT_NU,

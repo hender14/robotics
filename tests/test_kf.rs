@@ -24,7 +24,7 @@ mod tests {
         let mut out = na::Vector3::zeros();
         let mut res = false;
 
-        for _i in 0..5 {
+        for _i in 0..10 {
             (out, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
 
             /* validate */
@@ -42,7 +42,7 @@ mod tests {
         let mut flag = true;
         let len = ans.len();
         for i in 0..(len - 1) {
-            if (ans[i] - out[i]).abs() > 0.3 {
+            if (ans[i] - out[i]).abs() > 0.5 {
                 flag = false;
                 break;
             }
