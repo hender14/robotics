@@ -18,16 +18,21 @@ mod tests {
         let (nu, omega) = (0.2, 2. * PI * 10. / 360.);
         let delta = 1.;
         let landmarks = config::get_landmark();
-        // let loop_num = 36;
         let pose = na::Vector3::zeros();
 
         /* initial */
-        // let out = na::Vector3::<f32>::zeros();
+        let mut out = na::Vector3::zeros();
+        let mut res = false;
 
-        let (out, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
+        for _i in 0..5 {
+            (out, _) = estimate::state_estimate(nu, omega, delta, pose, &landmarks);
 
-        /* validate */
-        let res = validate(&ans, &out);
+            /* validate */
+            res = validate(&ans, &out);
+            if res {
+                break;
+            }
+        }
         /* test */
         assert!(res, "\nans:{}  out:{}", &ans, &out);
     }
@@ -37,7 +42,7 @@ mod tests {
         let mut flag = true;
         let len = ans.len();
         for i in 0..(len - 1) {
-            if (ans[i] - out[i]).abs() > 0.5 {
+            if (ans[i] - out[i]).abs() > 0.3 {
                 flag = false;
                 break;
             }

@@ -11,15 +11,41 @@ pub const LOOP_NUM: i32 = 36;
 pub const INIT_POSE: na::Vector3<f32> = na::Vector3::new(0., 0., 0.);
 pub const INIT_COV: f32 = 1e-10;
 
-/* init application */
+/* output config */
+#[macro_export]
+macro_rules! OUT_DIRECTORY {
+    () => {
+        "out"
+    };
+}
+#[macro_export]
+macro_rules! OUT_KF {
+    () => {
+        "kf"
+    };
+}
+#[macro_export]
+macro_rules! OUT_SLAM {
+    () => {
+        "slam"
+    };
+}
+
+/* Initialize the application */
 pub fn init() -> [Landmark; 6] {
+    /* Initialize the directory */
     file::directry_init();
+
+    /* Initialize output files */
     file::file_init();
+
+    /* Return the landmark positions */
     get_landmark()
 }
 
 /* get landmark position */
 pub fn get_landmark() -> [Landmark; 6] {
+    /* Define the landmarks with their corresponding positions */
     let pose: [Landmark; 6] = [
         Landmark {
             id: 0,

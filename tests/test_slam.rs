@@ -14,7 +14,7 @@ mod tests {
         /* Output specification */
         let ans = config::get_landmark();
 
-        let (_, _, out) = map::slam(file::KFPATH);
+        let (_, _, out) = map::slam(file::KF_PATH);
         println!("{:?}", out);
 
         /* validate */

@@ -6,6 +6,7 @@ pub fn start_app() {
     let landmarks_kf = config::init();
 
     /* main task */
+    /* kalmanfilter */
     let (_, _) = estimate::state_estimate(
         config::INIT_NU,
         config::INIT_OMEGA,
@@ -14,9 +15,10 @@ pub fn start_app() {
         &landmarks_kf,
     );
 
-    let (_, _, landmarks_slam) = map::slam(file::KFPATH);
+    /* slam */
+    let (_, _, landmarks_slam) = map::slam(file::KF_PATH);
 
     /* plot */
-    plot::plot_kf(file::KFPATH, &landmarks_kf);
-    plot::plot_slam(file::SLAMPATH, &landmarks_slam);
+    plot::plot_generic(file::KF_PATH, plot::KF_PATH, &landmarks_kf);
+    plot::plot_generic(file::SLAM_PATH, plot::SLAM_PATH, &landmarks_slam);
 }
