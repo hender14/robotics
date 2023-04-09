@@ -1,26 +1,23 @@
-use super::super::usecase::map_create as map;
-use super::super::usecase::state_estimate as estimate;
-use super::config;
-use super::file;
-use super::plot;
+use super::{config, file, plot};
+use crate::usecase::{map_create as map, state_estimate as estimate};
 
 pub fn start_app() {
     /* init */
-    let (lpose, landsize) = config::init();
+    let landmarks_kf = config::init();
 
-    /* main task */
-    let (time, nu, omega, pose, zres, zlist) = estimate::state_estimate(
+    /* kalmanfilter */
+    let (_, _) = estimate::state_estimate(
         config::INIT_NU,
         config::INIT_OMEGA,
         config::TIME,
         config::INIT_POSE,
-        lpose,
-        landsize,
+        &landmarks_kf,
     );
 
-    let (hat_xs, zlist, land) = map::slam(file::KFPATH);
+    /* slam */
+    let (_, _, landmarks_slam) = map::slam(file::KF_PATH);
 
     /* plot */
-    plot::plot_kf(file::KFPATH, &lpose);
-    plot::plot_slam(file::SLAMPATH, &land);
+    plot::plot_generic(file::KF_PATH, plot::KF_PATH, &landmarks_kf);
+    plot::plot_generic(file::SLAM_PATH, plot::SLAM_PATH, &landmarks_slam);
 }

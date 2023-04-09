@@ -1,21 +1,28 @@
-use super::utils as ut;
+use super::{
+    sensor_data::{Landmark, SensorData},
+    state::Twist,
+    utils as ut,
+};
 use nalgebra as na;
 
-struct Belief {
-    mean: na::Vector3<f32>,
+/* Belief struct representing the robot's estimated state (mean) and covariance matrix. */
+pub struct Belief {
+    pub mean: na::Vector3<f32>,
     cov: na::Matrix3<f32>,
 }
 
+/* KFilterPose struct representing the Kalman Filter for robot pose estimation. */
 pub struct KFilterPose<'a> {
-    belief: Belief,
-    system_cov: &'a ut::Stds,
+    pub belief: Belief,
+    system_cov: &'a ut::MotionNoise,
     distance_dev_rate: f32,
     direction_dev: f32,
 }
 
 impl<'a> KFilterPose<'a> {
+    /* Creates a new KFilterPose object with initial mean state and covariance. */
     pub fn new(initial_state_mean: &na::Vector3<f32>, initial_cov: f32) -> Self {
-        let system_cov = &ut::Stds {
+        let system_cov = &ut::MotionNoise {
             nn: 0.19,
             no: 0.001,
             oo: 0.13,
@@ -33,41 +40,43 @@ impl<'a> KFilterPose<'a> {
         }
     }
 
-    pub fn kf_predict(&mut self, nu: f32, omega: f32, time: f32) {
-        let m = ut::mat_m(nu, omega, time, self.system_cov);
-        let a = ut::mat_a(nu, omega, time, self.belief.mean[2]);
-        let f = ut::mat_f(nu, omega, time, self.belief.mean[2]);
+    /* Prediction step of the Kalman Filter. */
+    pub fn kf_predict(&mut self, velocity: Twist, time: f32) {
+        let m = ut::motion_noise_cov(velocity.nu, velocity.omega, time, self.system_cov);
+        let a = ut::state_trans_model(velocity.nu, velocity.omega, time, self.belief.mean[2]);
+        let f = ut::state_trans_jac(velocity.nu, velocity.omega, time, self.belief.mean[2]);
         self.belief.cov = f * (self.belief.cov) * (f.transpose()) + a * (m) * (a.transpose());
-        self.belief.mean = state_transition(nu, omega, time, &self.belief.mean);
+        self.belief.mean = state_transition(velocity.nu, velocity.omega, time, &self.belief.mean);
     }
 
-    pub fn kf_update(
-        &mut self,
-        obj_dis: &na::Matrix2x6<f32>,
-        lpose: &[[f32; 3]; 6],
-        landsize: usize,
-    ) -> na::Vector3<f32> {
-        /* Process by landmark */
-        for i in 0..landsize {
-            /* calculate landmark */
-            let lpose_row = na::Vector3::from(lpose[i]);
-
-            let h = ut::mat_h(&self.belief.mean, &lpose_row);
-            let estimated_z = ut::polar_trans(&self.belief.mean, &lpose_row);
-            let z = obj_dis.column(i);
-            let q = ut::mat_q(estimated_z[0] * self.distance_dev_rate, self.direction_dev);
-            let kalman_gain = self.belief.cov
-                * (h.transpose())
-                * (h * self.belief.cov * h.transpose() + q)
-                    .try_inverse()
-                    .unwrap();
-            self.belief.mean += kalman_gain * (z - estimated_z);
-            self.belief.cov = (na::Matrix3::identity() - kalman_gain * h) * self.belief.cov;
+    /* Update step of the Kalman Filter. */
+    pub fn kf_update(&mut self, sensor_data: &[SensorData], landmarks: &[Landmark]) {
+        // Process each landmark.
+        for landmark in landmarks {
+            if sensor_data[landmark.id].result {
+                /* Compute observation model and Jacobian. */
+                let h = ut::observ_model_jac(&self.belief.mean, &landmark.pose);
+                let estimated_z = ut::cartesian_to_polar(&self.belief.mean, &landmark.pose);
+                let z = sensor_data[landmark.id].data.polor;
+                let q = ut::observ_noise_cov(
+                    estimated_z[0] * self.distance_dev_rate,
+                    self.direction_dev,
+                );
+                /* Compute Kalman Gain. */
+                let kalman_gain = self.belief.cov
+                    * (h.transpose())
+                    * (h * self.belief.cov * h.transpose() + q)
+                        .try_inverse()
+                        .unwrap();
+                /* Update state mean and covariance. */
+                self.belief.mean += kalman_gain * (z - estimated_z);
+                self.belief.cov = (na::Matrix3::identity() - kalman_gain * h) * self.belief.cov;
+            }
         }
-        self.belief.mean
     }
 }
 
+/* Calculate the state transition  */
 pub fn state_transition(
     nu: f32,
     omega: f32,
@@ -76,13 +85,12 @@ pub fn state_transition(
 ) -> na::Vector3<f32> {
     let t0 = pose[2];
     if omega.abs() < 1e-10 {
-        return pose + na::Vector3::new(nu * t0.cos(), nu * t0.sin(), omega) * time;
+        pose + na::Vector3::new(nu * t0.cos(), nu * t0.sin(), omega) * time
     } else {
-        return pose
-            + na::Vector3::new(
-                nu / omega * ((t0 + omega * time).sin() - t0.sin()),
-                nu / omega * (-(t0 + omega * time).cos() + t0.cos()),
-                omega * time,
-            );
+        pose + na::Vector3::new(
+            nu / omega * ((t0 + omega * time).sin() - t0.sin()),
+            nu / omega * (-(t0 + omega * time).cos() + t0.cos()),
+            omega * time,
+        )
     }
 }
