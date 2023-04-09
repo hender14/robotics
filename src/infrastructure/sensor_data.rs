@@ -3,8 +3,10 @@ use crate::domain::{
     utils as ut,
 };
 use nalgebra as na;
-use rand::distributions::{Distribution, Uniform};
-use rand::prelude::thread_rng;
+use rand::{
+    distributions::{Distribution, Uniform},
+    prelude::thread_rng,
+};
 use rand_distr::Normal;
 use std::f32::consts::PI;
 

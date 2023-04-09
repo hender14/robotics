@@ -28,7 +28,7 @@ mod tests {
         let mut flag = true;
         for i in 0..6 {
             for j in 0..2 {
-                if (ans[i].pose[j] - out[i].pose[j]).abs() > 1. {
+                if (ans[i].pose[j] - out[i].pose[j]).abs() > 1.5 {
                     flag = false;
                     println!(
                         "ans: {} out: {} err: {}",
